@@ -241,5 +241,24 @@ export function createApp(corsOrigin: string = 'http://localhost:5173'): express
     console.warn('CAIA initialization failed:', err);
   });
 
+  // Global error-handling middleware (must be registered AFTER all routes)
+  // Without this, synchronous throws that bypass route-level try/catch
+  // produce unstructured Express default 500 responses.
+  app.use((err: Error & { status?: number; statusCode?: number }, _req: Request, res: Response, _next: NextFunction) => {
+    // Preserve status codes set by upstream middleware (e.g., CSRF's ForbiddenError)
+    const status = err.status || err.statusCode || 500;
+
+    if (status >= 500) {
+      console.error('[GlobalErrorHandler]', err.message, err.stack);
+    }
+
+    res.status(status).json({
+      error: status === 403 ? 'FORBIDDEN' : status === 400 ? 'BAD_REQUEST' : 'INTERNAL_SERVER_ERROR',
+      message: process.env.NODE_ENV === 'production' && status >= 500
+        ? 'An unexpected error occurred'
+        : err.message,
+    });
+  });
+
   return app;
 }

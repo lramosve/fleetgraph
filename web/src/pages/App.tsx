@@ -486,53 +486,55 @@ export function AppLayout() {
             </div>
 
             {/* Sidebar content */}
-            <div className="flex-1 overflow-auto py-2">
-              {activeMode === 'docs' && (
-                <DocumentsTree
-                  documents={documents}
-                  activeId={activeDocumentId}
-                  onSelect={(id) => navigate(`/documents/${id}`)}
-                />
-              )}
-              {activeMode === 'issues' && (
-                <IssuesSidebar
-                  issues={issues}
-                  activeId={activeDocumentId}
-                  onUpdateIssue={updateIssue}
-                />
-              )}
-              {activeMode === 'projects' && (
-                <ProjectsList
-                  projects={projects}
-                  activeId={activeDocumentId}
-                  currentProjectId={currentDocumentProjectId}
-                  onUpdateProject={updateProject}
-                />
-              )}
-              {activeMode === 'programs' && (
-                <ProgramsList
-                  programs={programs}
-                  activeId={activeDocumentId}
-                  onSelect={(id) => navigate(`/documents/${id}`)}
-                  onUpdateProgram={updateProgram}
-                />
-              )}
-              {activeMode === 'team' && (
-                <TeamSidebar />
-              )}
-              {activeMode === 'settings' && (
-                <div className="px-3 py-2 text-sm text-muted">Settings</div>
-              )}
-              {activeMode === 'dashboard' && (
-                <DashboardSidebar />
-              )}
-              {activeMode === 'project-context' && currentDocumentProjectId && (
-                <ProjectContextSidebar
-                  projectId={currentDocumentProjectId}
-                  activeDocumentId={activeDocumentId}
-                />
-              )}
-            </div>
+            <ErrorBoundary fallback={<div className="p-3 text-xs text-muted">Sidebar failed to load. <button className="underline" onClick={() => window.location.reload()}>Reload</button></div>}>
+              <div className="flex-1 overflow-auto py-2">
+                {activeMode === 'docs' && (
+                  <DocumentsTree
+                    documents={documents}
+                    activeId={activeDocumentId}
+                    onSelect={(id) => navigate(`/documents/${id}`)}
+                  />
+                )}
+                {activeMode === 'issues' && (
+                  <IssuesSidebar
+                    issues={issues}
+                    activeId={activeDocumentId}
+                    onUpdateIssue={updateIssue}
+                  />
+                )}
+                {activeMode === 'projects' && (
+                  <ProjectsList
+                    projects={projects}
+                    activeId={activeDocumentId}
+                    currentProjectId={currentDocumentProjectId}
+                    onUpdateProject={updateProject}
+                  />
+                )}
+                {activeMode === 'programs' && (
+                  <ProgramsList
+                    programs={programs}
+                    activeId={activeDocumentId}
+                    onSelect={(id) => navigate(`/documents/${id}`)}
+                    onUpdateProgram={updateProgram}
+                  />
+                )}
+                {activeMode === 'team' && (
+                  <TeamSidebar />
+                )}
+                {activeMode === 'settings' && (
+                  <div className="px-3 py-2 text-sm text-muted">Settings</div>
+                )}
+                {activeMode === 'dashboard' && (
+                  <DashboardSidebar />
+                )}
+                {activeMode === 'project-context' && currentDocumentProjectId && (
+                  <ProjectContextSidebar
+                    projectId={currentDocumentProjectId}
+                    activeDocumentId={activeDocumentId}
+                  />
+                )}
+              </div>
+            </ErrorBoundary>
 
           </div>
         </aside>

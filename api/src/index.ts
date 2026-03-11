@@ -10,6 +10,21 @@ const __dirname = dirname(__filename);
 config({ path: join(__dirname, '../.env.local') });
 config({ path: join(__dirname, '../.env') });
 
+// ── Process-level error handlers ──────────────────────────────────
+// Without these, unhandled rejections and uncaught exceptions crash the
+// process silently, potentially losing in-flight Yjs document state.
+process.on('unhandledRejection', (reason: unknown) => {
+  console.error('[FATAL] Unhandled promise rejection:', reason);
+  // Exit with failure code so process manager (PM2, ECS) can restart
+  process.exit(1);
+});
+
+process.on('uncaughtException', (error: Error) => {
+  console.error('[FATAL] Uncaught exception:', error);
+  // Exit with failure code so process manager (PM2, ECS) can restart
+  process.exit(1);
+});
+
 async function main() {
   // Load secrets from SSM in production (before importing app)
   if (process.env.NODE_ENV === 'production') {
