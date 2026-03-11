@@ -119,6 +119,7 @@ router.get('/grid', authMiddleware, async (req: Request, res: Response) => {
     );
 
     // Get issues with sprint and assignee info (only visible issues)
+    // Filter by sprint date range to avoid loading all historical issues
     const issuesResult = await pool.query(
       `SELECT i.id, i.title, da_sprint.related_id as sprint_id, i.properties->>'assignee_id' as assignee_id, i.properties->>'state' as state, i.ticket_number,
               s.properties->>'start_date' as sprint_start, s.properties->>'end_date' as sprint_end,
@@ -129,8 +130,9 @@ router.get('/grid', authMiddleware, async (req: Request, res: Response) => {
        LEFT JOIN document_associations prog_da ON i.id = prog_da.document_id AND prog_da.relationship_type = 'program'
        LEFT JOIN documents p ON prog_da.related_id = p.id AND p.document_type = 'program'
        WHERE i.workspace_id = $1 AND i.document_type = 'issue' AND i.properties->>'assignee_id' IS NOT NULL
+         AND (s.properties->>'start_date')::date >= $4 AND (s.properties->>'end_date')::date <= $5
          AND ${VISIBILITY_FILTER_SQL('i', '$2', '$3')}`,
-      [workspaceId, userId, isAdmin]
+      [workspaceId, userId, isAdmin, minDate, maxDate]
     );
 
     // Build associations: user_id -> sprint_number -> { programs: [...], issues: [...] }
