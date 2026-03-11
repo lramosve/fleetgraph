@@ -44,6 +44,22 @@ export default defineConfig(({ mode }) => {
   };
 
   return {
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id: string) {
+            // Separate large vendor libraries into independently cached chunks
+            if (id.includes('node_modules')) {
+              if (id.includes('@tiptap/') || id.includes('prosemirror-')) return 'vendor-editor';
+              if (id.includes('/yjs/') || id.includes('y-websocket') || id.includes('y-indexeddb') || id.includes('/lib0/')) return 'vendor-collab';
+              if (id.includes('emoji-picker-react')) return 'vendor-emoji';
+              if (id.includes('highlight.js') || id.includes('lowlight')) return 'vendor-highlight';
+              if (id.includes('@dnd-kit/')) return 'vendor-dnd';
+            }
+          },
+        },
+      },
+    },
     plugins: [
       react(),
       svgr({
