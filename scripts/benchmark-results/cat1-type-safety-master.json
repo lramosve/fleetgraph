@@ -1,0 +1,14 @@
+{
+  "category": "type-safety",
+  "branch": "master",
+  "commit": "cc67d63",
+  "timestamp": "2026-03-11T22:02:45Z",
+  "metrics": {
+    "as_any": { "api": 154, "web": 7, "total": 161 },
+    "colon_any": { "api": 68, "web": 24, "total": 92 },
+    "type_assertions": { "api": 63, "web": 210, "total": 273 },
+    "non_null_assertions": { "api": 7, "web": 17, "total": 24 },
+    "ts_directives": { "api": 0, "web": 1, "total": 1 },
+    "total_violations": 551
+  }
+}

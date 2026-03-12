@@ -1,0 +1,27 @@
+{
+  "category": "query-efficiency",
+  "branch": "master",
+  "commit": "cc67d63",
+  "timestamp": "2026-03-11T22:02:56Z",
+  "seed_data": { "documents": 671, "issues": 404, "users": 25, "sprints": 35 },
+  "metrics": {
+    "weeks_dashboard": {
+      "execution_time_ms": 3.695,
+      "planning_time_ms": 1.710,
+      "shared_hit_blocks": 4275,
+      "sub_plans": 5
+    },
+    "team_grid_issues": {
+      "execution_time_ms": 1.129,
+      "planning_time_ms": 1.029,
+      "shared_hit_blocks": 164,
+      "actual_rows": 266
+    },
+    "issues_listing": {
+      "execution_time_ms": 2.991,
+      "shared_hit_blocks": 49,
+      "actual_rows": 404
+    },
+    "total_indexes": 83
+  }
+}

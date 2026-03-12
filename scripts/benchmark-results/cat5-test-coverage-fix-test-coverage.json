@@ -1,0 +1,23 @@
+{
+  "category": "test-coverage",
+  "branch": "fix/test-coverage",
+  "commit": "c3ba38c",
+  "timestamp": "2026-03-11T22:21:06Z",
+  "metrics": {
+    "api": {
+      "test_files": 28,
+      "test_cases": 447,
+      "has_coverage_config": true
+    },
+    "web": {
+      "test_files": 20,
+      "test_cases": 186,
+      "has_coverage_config": true
+    },
+    "e2e": {
+      "test_files": 71
+    },
+    "total_test_files": 119,
+    "total_unit_test_cases": 633
+  }
+}

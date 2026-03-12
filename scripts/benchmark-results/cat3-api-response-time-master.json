@@ -1,0 +1,21 @@
+{
+  "category": "api-response-time",
+  "branch": "master",
+  "commit": "cc67d63",
+  "timestamp": "2026-03-11T23:34:13Z",
+  "seed_data": { "documents": 671, "issues": 404, "users": 25, "sprints": 35 },
+  "tool": "autocannon autocannon v8.0.0",
+  "test_config": {
+    "connections": [10, 25, 50],
+    "duration_seconds": 10
+  },
+  "metrics": {
+    "autocannon": {
+      "/api/team/grid": { "10_connections": { "p50_ms": 21, "p95_ms": 31.0, "p99_ms": 38, "avg_ms": 22.15, "rps": 441.3, "total_2xx": 4413, "non2xx": 0, "errors": 0 }, "25_connections": { "p50_ms": 53, "p95_ms": 66.7, "p99_ms": 89, "avg_ms": 54.12, "rps": 457.2, "total_2xx": 4572, "non2xx": 0, "errors": 0 }, "50_connections": { "p50_ms": 109, "p95_ms": 141.3, "p99_ms": 158, "avg_ms": 112.35, "rps": 441.4, "total_2xx": 4414, "non2xx": 0, "errors": 0 } }, "/api/issues": { "10_connections": { "p50_ms": 78, "p95_ms": 97.0, "p99_ms": 109, "avg_ms": 78.37, "rps": 126.7, "total_2xx": 1267, "non2xx": 0, "errors": 0 }, "25_connections": { "p50_ms": 199, "p95_ms": 231.3, "p99_ms": 267, "avg_ms": 198.86, "rps": 124.5, "total_2xx": 1245, "non2xx": 0, "errors": 0 }, "50_connections": { "p50_ms": 395, "p95_ms": 458.3, "p99_ms": 483, "avg_ms": 397.12, "rps": 123.5, "total_2xx": 1235, "non2xx": 0, "errors": 0 } }, "/api/weeks": { "10_connections": { "p50_ms": 16, "p95_ms": 25.7, "p99_ms": 34, "avg_ms": 16.37, "rps": 592, "total_2xx": 5920, "non2xx": 0, "errors": 0 }, "25_connections": { "p50_ms": 41, "p95_ms": 53.3, "p99_ms": 72, "avg_ms": 41.82, "rps": 589.9, "total_2xx": 5899, "non2xx": 0, "errors": 0 }, "50_connections": { "p50_ms": 83, "p95_ms": 112.0, "p99_ms": 138, "avg_ms": 85.82, "rps": 577.4, "total_2xx": 5774, "non2xx": 0, "errors": 0 } }, "/api/dashboard/my-work": { "10_connections": { "p50_ms": 19, "p95_ms": 29.7, "p99_ms": 38, "avg_ms": 20.06, "rps": 486.4, "total_2xx": 4864, "non2xx": 0, "errors": 0 }, "25_connections": { "p50_ms": 48, "p95_ms": 65.0, "p99_ms": 90, "avg_ms": 50.28, "rps": 492.5, "total_2xx": 4925, "non2xx": 0, "errors": 0 }, "50_connections": { "p50_ms": 100, "p95_ms": 142.7, "p99_ms": 171, "avg_ms": 104.32, "rps": 475.9, "total_2xx": 4759, "non2xx": 0, "errors": 0 } }
+    },
+    "curl_baseline": {
+      "/api/team/grid": { "times_ms": [21,17,19,17,18], "median_ms": 18, "p95_ms": 21 },
+      "/api/issues": { "times_ms": [34,40,31,36,23], "median_ms": 34, "p95_ms": 40 }
+    }
+  }
+}

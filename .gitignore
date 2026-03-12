@@ -114,5 +114,6 @@ vendor/
 # Vite PWA dev artifacts
 web/dev-dist/
 
-# Benchmark results (generated, machine-specific)
-scripts/benchmark-results/
+# Benchmark results - temp files only (JSON results are committed as evidence)
+scripts/benchmark-results/.api-server.log
+scripts/benchmark-results/.cookies.txt

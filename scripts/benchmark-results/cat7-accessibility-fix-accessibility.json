@@ -1,0 +1,15 @@
+{
+  "category": "accessibility",
+  "branch": "fix/accessibility",
+  "commit": "bb1eb89",
+  "timestamp": "2026-03-11T22:22:59Z",
+  "metrics": {
+    "dialogs_total": 3,
+    "dialogs_with_focus_trap": 3,
+    "has_focus_trap_hook": true,
+    "aria_labels": 124,
+    "aria_labelledby": 5,
+    "role_attributes": 116,
+    "admin_missing_labels_estimate": 0
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "category": "query-efficiency",
+  "branch": "fix/query-efficiency",
+  "commit": "c351a86",
+  "timestamp": "2026-03-11T22:20:49Z",
+  "seed_data": { "documents": 671, "issues": 404, "users": 25, "sprints": 35 },
+  "metrics": {
+    "weeks_dashboard": {
+      "execution_time_ms": 4.303,
+      "planning_time_ms": 1.680,
+      "shared_hit_blocks": 2613,
+      "sub_plans": 5
+    },
+    "team_grid_issues": {
+      "execution_time_ms": 0.539,
+      "planning_time_ms": 1.006,
+      "shared_hit_blocks": 164,
+      "actual_rows": 266
+    },
+    "issues_listing": {
+      "execution_time_ms": 0.253,
+      "shared_hit_blocks": 49,
+      "actual_rows": 404
+    },
+    "total_indexes": 87
+  }
+}

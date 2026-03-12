@@ -1,0 +1,21 @@
+{
+  "category": "error-handling",
+  "branch": "fix/error-handling",
+  "commit": "613288b",
+  "timestamp": "2026-03-11T22:22:36Z",
+  "metrics": {
+    "process_handlers": {
+      "uncaught_exception": 1,
+      "unhandled_rejection": 1,
+      "total": 2
+    },
+    "express_error_middleware": 1,
+    "error_boundaries": 13,
+    "silent_catches": 11,
+    "empty_catch_blocks": 0,
+    "route_error_handling": {
+      "routes_with_try_catch": 28,
+      "routes_total": 28
+    }
+  }
+}

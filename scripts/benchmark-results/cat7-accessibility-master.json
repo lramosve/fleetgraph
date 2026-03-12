@@ -1,0 +1,15 @@
+{
+  "category": "accessibility",
+  "branch": "master",
+  "commit": "cc67d63",
+  "timestamp": "2026-03-11T22:02:45Z",
+  "metrics": {
+    "dialogs_total": 3,
+    "dialogs_with_focus_trap": 0,
+    "has_focus_trap_hook": false,
+    "aria_labels": 114,
+    "aria_labelledby": 2,
+    "role_attributes": 116,
+    "admin_missing_labels_estimate": 6
+  }
+}
