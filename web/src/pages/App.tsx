@@ -9,7 +9,7 @@ import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { ArchiveIcon } from '@/components/icons/ArchiveIcon';
 import { useDocuments, WikiDocument } from '@/contexts/DocumentsContext';
 import { usePrograms, Program } from '@/contexts/ProgramsContext';
-import { useIssues, Issue } from '@/contexts/IssuesContext';
+import { useIssues, Issue, IssueUpdatePayload } from '@/contexts/IssuesContext';
 import { useProjects, Project } from '@/contexts/ProjectsContext';
 import { useCurrentDocumentType, useCurrentDocument } from '@/contexts/CurrentDocumentContext';
 import { documentKeys } from '@/hooks/useDocumentsQuery';
@@ -966,7 +966,7 @@ function IssuesSidebar({
 }: {
   issues: Issue[];
   activeId?: string;
-  onUpdateIssue: (id: string, updates: Partial<Issue>) => Promise<Issue | null>;
+  onUpdateIssue: (id: string, updates: IssueUpdatePayload) => Promise<Issue | null>;
 }) {
   // Show context tree when viewing a specific issue
   const showContext = !!activeId;
@@ -1006,7 +1006,7 @@ function IssuesList({
 }: {
   issues: Issue[];
   activeId?: string;
-  onUpdateIssue: (id: string, updates: Partial<Issue>) => Promise<Issue | null>;
+  onUpdateIssue: (id: string, updates: IssueUpdatePayload) => Promise<Issue | null>;
 }) {
   const { showToast } = useToast();
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; issue: Issue } | null>(null);

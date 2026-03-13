@@ -89,6 +89,27 @@ export function getSprintTitle(issue: Issue): string | null {
   return getAssociationTitle(issue, 'sprint');
 }
 
+/**
+ * Issue update payload - mutable Issue fields + API-only parameters.
+ * Prevents accidentally sending readonly fields (id, created_at, ticket_number)
+ * and properly surfaces API-only params that aren't on Issue.
+ */
+export type IssueUpdatePayload = Partial<Pick<Issue,
+  | 'title'
+  | 'state'
+  | 'priority'
+  | 'assignee_id'
+  | 'estimate'
+  | 'belongs_to'
+  | 'source'
+  | 'rejection_reason'
+>> & {
+  /** Confirm closing parent with incomplete children (API-only) */
+  confirm_orphan_children?: boolean;
+  /** Legacy sprint assignment (API-only, used by bulk update) */
+  sprint_id?: string | null;
+};
+
 // Filter interface for locked context
 export interface IssueFilters {
   programId?: string;
@@ -187,7 +208,7 @@ async function createIssueApi(data: CreateIssueData): Promise<Issue> {
 }
 
 // Update issue
-async function updateIssueApi(id: string, updates: Partial<Issue>): Promise<Issue> {
+async function updateIssueApi(id: string, updates: IssueUpdatePayload): Promise<Issue> {
   // API accepts belongs_to directly - no conversion needed
   const res = await apiPatch(`/api/issues/${id}`, updates);
   if (!res.ok) {
@@ -283,7 +304,7 @@ export function useUpdateIssue() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, updates }: { id: string; updates: Partial<Issue> }) =>
+    mutationFn: ({ id, updates }: { id: string; updates: IssueUpdatePayload }) =>
       updateIssueApi(id, updates),
     onMutate: async ({ id, updates }) => {
       await queryClient.cancelQueries({ queryKey: issueKeys.lists() });
@@ -428,7 +449,7 @@ export function useIssues() {
     }
   };
 
-  const updateIssue = async (id: string, updates: Partial<Issue>): Promise<Issue | null> => {
+  const updateIssue = async (id: string, updates: IssueUpdatePayload): Promise<Issue | null> => {
     try {
       return await updateMutation.mutateAsync({ id, updates });
     } catch (error) {
