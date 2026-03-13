@@ -109,7 +109,7 @@ export function extractHypothesisFromContent(content: unknown): string | null {
   if (contentNodes.length === 0) return null;
 
   const text = extractText(contentNodes).trim();
-  return text || null;
+  return text ?? null;
 }
 
 /**
@@ -158,7 +158,7 @@ export function extractSuccessCriteriaFromContent(content: unknown): string | nu
   if (contentNodes.length === 0) return null;
 
   const text = extractText(contentNodes).trim();
-  return text || null;
+  return text ?? null;
 }
 
 /**
@@ -208,7 +208,7 @@ export function extractVisionFromContent(content: unknown): string | null {
   if (contentNodes.length === 0) return null;
 
   const text = extractText(contentNodes).trim();
-  return text || null;
+  return text ?? null;
 }
 
 /**
@@ -258,7 +258,7 @@ export function extractGoalsFromContent(content: unknown): string | null {
   if (contentNodes.length === 0) return null;
 
   const text = extractText(contentNodes).trim();
-  return text || null;
+  return text ?? null;
 }
 
 /**

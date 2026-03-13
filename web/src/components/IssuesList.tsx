@@ -7,7 +7,7 @@ import { SelectableList, RowRenderProps, UseSelectionReturn } from '@/components
 import { BulkActionBar } from '@/components/BulkActionBar';
 import { DocumentListToolbar } from '@/components/DocumentListToolbar';
 import { Issue } from '@/contexts/IssuesContext';
-import { useBulkUpdateIssues, useIssuesQuery, useCreateIssue, useUpdateIssue, issueKeys, getProgramId, getProgramTitle, getProjectId, getProjectTitle, getSprintId, getSprintTitle } from '@/hooks/useIssuesQuery';
+import { useBulkUpdateIssues, useIssuesQuery, useCreateIssue, useUpdateIssue, issueKeys, getProgramId, getProgramTitle, getProjectId, getProjectTitle, getSprintId, getSprintTitle, IssueUpdatePayload } from '@/hooks/useIssuesQuery';
 import type { BelongsTo } from '@ship/shared';
 import { projectKeys, useProjectsQuery } from '@/hooks/useProjectsQuery';
 import { useQueryClient } from '@tanstack/react-query';
@@ -108,7 +108,7 @@ export interface IssuesListProps {
   /** Whether data is loading */
   loading?: boolean;
   /** Callback to update an issue */
-  onUpdateIssue?: (id: string, updates: Partial<Issue>) => Promise<Issue | null>;
+  onUpdateIssue?: (id: string, updates: IssueUpdatePayload) => Promise<Issue | null>;
   /** Callback to create a new issue */
   onCreateIssue?: () => Promise<Issue | null>;
   /** Callback to refresh issues */
@@ -1021,7 +1021,7 @@ export function IssuesList({
   // Handler for inline sprint assignment changes
   const handleInlineSprintChange = useCallback((issueId: string, sprintId: string | null) => {
     updateIssueMutation.mutate(
-      { id: issueId, updates: { sprint_id: sprintId } as Partial<Issue> },
+      { id: issueId, updates: { sprint_id: sprintId } },
       {
         onSuccess: () => {
           const sprintName = sprintId

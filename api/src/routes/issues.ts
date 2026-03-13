@@ -78,33 +78,53 @@ const rejectIssueSchema = z.object({
   reason: z.string().min(1).max(1000),
 });
 
+interface IssueRow {
+  id: string;
+  title: string;
+  ticket_number: number;
+  content: unknown;
+  properties: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+  started_at: string | null;
+  completed_at: string | null;
+  cancelled_at: string | null;
+  reopened_at: string | null;
+  converted_from_id: string | null;
+  assignee_name: string | null;
+  assignee_archived: boolean;
+  created_by_name: string | null;
+  [key: string]: unknown;
+}
+
 // Helper to extract issue properties from row (without belongs_to - added separately)
-function extractIssueFromRow(row: any) {
+function extractIssueFromRow(row: IssueRow) {
   const props = row.properties || {};
   return {
     id: row.id,
     title: row.title,
     state: props.state || 'backlog',
     priority: props.priority || 'medium',
-    assignee_id: props.assignee_id || null,
+    assignee_id: props.assignee_id ?? null,
     estimate: props.estimate ?? null,
     source: props.source || 'internal',
-    rejection_reason: props.rejection_reason || null,
+    rejection_reason: props.rejection_reason ?? null,
     // Accountability fields for action_items issues
-    due_date: props.due_date || null,
+    due_date: props.due_date ?? null,
     is_system_generated: props.is_system_generated || false,
-    accountability_target_id: props.accountability_target_id || null,
-    accountability_type: props.accountability_type || null,
+    accountability_target_id: props.accountability_target_id ?? null,
+    accountability_type: props.accountability_type ?? null,
     ticket_number: row.ticket_number,
     content: row.content,
     created_at: row.created_at,
     updated_at: row.updated_at,
     created_by: row.created_by,
-    started_at: row.started_at || null,
-    completed_at: row.completed_at || null,
-    cancelled_at: row.cancelled_at || null,
-    reopened_at: row.reopened_at || null,
-    converted_from_id: row.converted_from_id || null,
+    started_at: row.started_at ?? null,
+    completed_at: row.completed_at ?? null,
+    cancelled_at: row.cancelled_at ?? null,
+    reopened_at: row.reopened_at ?? null,
+    converted_from_id: row.converted_from_id ?? null,
     assignee_name: row.assignee_name,
     assignee_archived: row.assignee_archived || false,
     created_by_name: row.created_by_name,
@@ -605,13 +625,13 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
       state: state || 'backlog',
       priority: priority || 'medium',
       source: source || 'internal',
-      assignee_id: assignee_id || null,
+      assignee_id: assignee_id ?? null,
       rejection_reason: null,
       // Accountability fields for action_items issues
-      due_date: due_date || null,
+      due_date: due_date ?? null,
       is_system_generated: is_system_generated || false,
-      accountability_target_id: accountability_target_id || null,
-      accountability_type: accountability_type || null,
+      accountability_target_id: accountability_target_id ?? null,
+      accountability_type: accountability_type ?? null,
     };
 
     const result = await client.query(
@@ -786,28 +806,28 @@ router.patch('/:id', authMiddleware, async (req: Request, res: Response) => {
     let propsChanged = false;
 
     if (data.state !== undefined && data.state !== currentProps.state) {
-      changes.push({ field: 'state', oldValue: currentProps.state || null, newValue: data.state });
+      changes.push({ field: 'state', oldValue: currentProps.state ?? null, newValue: data.state });
       newProps.state = data.state;
       propsChanged = true;
 
       // Update status timestamps based on state change
-      const timestampUpdates = getTimestampUpdates(currentProps.state || null, data.state);
+      const timestampUpdates = getTimestampUpdates(currentProps.state ?? null, data.state);
       for (const [col, expr] of Object.entries(timestampUpdates)) {
         updates.push(`${col} = ${expr}`);
       }
     }
     if (data.priority !== undefined && data.priority !== currentProps.priority) {
-      changes.push({ field: 'priority', oldValue: currentProps.priority || null, newValue: data.priority });
+      changes.push({ field: 'priority', oldValue: currentProps.priority ?? null, newValue: data.priority });
       newProps.priority = data.priority;
       propsChanged = true;
     }
     if (data.assignee_id !== undefined && data.assignee_id !== currentProps.assignee_id) {
-      changes.push({ field: 'assignee_id', oldValue: currentProps.assignee_id || null, newValue: data.assignee_id });
+      changes.push({ field: 'assignee_id', oldValue: currentProps.assignee_id ?? null, newValue: data.assignee_id });
       newProps.assignee_id = data.assignee_id;
       propsChanged = true;
     }
     if (data.estimate !== undefined && data.estimate !== currentProps.estimate) {
-      changes.push({ field: 'estimate', oldValue: currentProps.estimate?.toString() || null, newValue: data.estimate?.toString() || null });
+      changes.push({ field: 'estimate', oldValue: currentProps.estimate?.toString() ?? null, newValue: data.estimate?.toString() ?? null });
       newProps.estimate = data.estimate;
       propsChanged = true;
     }
@@ -1477,7 +1497,7 @@ router.post('/:id/iterations', authMiddleware, async (req: Request, res: Respons
        (issue_id, workspace_id, status, what_attempted, blockers_encountered, author_id)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
-      [issueId, workspaceId, status, what_attempted || null, blockers_encountered || null, userId]
+      [issueId, workspaceId, status, what_attempted ?? null, blockers_encountered ?? null, userId]
     );
 
     // Get author info

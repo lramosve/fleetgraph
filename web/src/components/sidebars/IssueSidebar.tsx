@@ -3,7 +3,7 @@ import { Combobox } from '@/components/ui/Combobox';
 import { MultiAssociationChips } from '@/components/ui/MultiAssociationChips';
 import { PropertyRow } from '@/components/ui/PropertyRow';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { isCascadeWarningError, type IncompleteChild } from '@/hooks/useIssuesQuery';
+import { isCascadeWarningError, type IncompleteChild, type IssueUpdatePayload } from '@/hooks/useIssuesQuery';
 import { apiPost, apiDelete } from '@/lib/api';
 import { formatDateRange } from '@/lib/date-utils';
 import type { BelongsTo, BelongsToType } from '@ship/shared';
@@ -56,7 +56,7 @@ interface IssueSidebarProps {
   programs: Program[];
   /** Available projects for multi-association */
   projects?: Project[];
-  onUpdate: (updates: Partial<Issue>) => Promise<void>;
+  onUpdate: (updates: IssueUpdatePayload) => Promise<void>;
   /** Called after an association is added/removed via API */
   onAssociationChange?: () => void;
   onConvert?: () => void;
@@ -124,7 +124,7 @@ export function IssueSidebar({
   const [cascadeWarning, setCascadeWarning] = useState<{
     open: boolean;
     pendingState: string | null;
-    incompleteChildren: IncompleteChild[];
+    incompleteChildren: readonly IncompleteChild[];
   }>({ open: false, pendingState: null, incompleteChildren: [] });
 
   // Get current associations from issue - memoize to prevent infinite re-renders
@@ -153,7 +153,7 @@ export function IssueSidebar({
       await onUpdate({
         state: cascadeWarning.pendingState,
         confirm_orphan_children: true,
-      } as Partial<Issue> & { confirm_orphan_children: boolean });
+      });
     }
     setCascadeWarning({ open: false, pendingState: null, incompleteChildren: [] });
   };
@@ -227,7 +227,7 @@ export function IssueSidebar({
     if (programId) {
       newBelongsTo.push({ id: programId, type: 'program' });
     }
-    await onUpdate({ belongs_to: newBelongsTo } as Partial<Issue>);
+    await onUpdate({ belongs_to: newBelongsTo });
   };
 
   // Legacy sprint change handler
@@ -242,7 +242,7 @@ export function IssueSidebar({
     if (sprintId) {
       newBelongsTo.push({ id: sprintId, type: 'sprint' });
     }
-    await onUpdate({ belongs_to: newBelongsTo } as Partial<Issue>);
+    await onUpdate({ belongs_to: newBelongsTo });
   };
 
   const handleReject = () => {

@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { pool } from '../db/client.js';
+import { queryOne } from '../db/query-helpers.js';
 import { getVisibilityContext, VISIBILITY_FILTER_SQL } from '../middleware/visibility.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { TEMPLATE_HEADINGS, extractText, hasContent } from '../utils/document-content.js';
@@ -45,12 +46,12 @@ router.get('/grid', authMiddleware, async (req: Request, res: Response) => {
     );
 
     // Get workspace sprint start date
-    const workspaceResult = await pool.query(
+    const workspaceRow = await queryOne<{ sprint_start_date: Date | string }>(
       `SELECT sprint_start_date FROM workspaces WHERE id = $1`,
       [workspaceId]
     );
 
-    const rawSprintStartDate = workspaceResult.rows[0]?.sprint_start_date;
+    const rawSprintStartDate = workspaceRow?.sprint_start_date;
     const sprintDurationDays = 7; // 1-week sprints
 
     const today = new Date();
@@ -783,12 +784,12 @@ router.get('/accountability', authMiddleware, async (req: Request, res: Response
     }
 
     // Get workspace sprint start date
-    const workspaceResult = await pool.query(
+    const workspaceRow = await queryOne<{ sprint_start_date: Date | string }>(
       `SELECT sprint_start_date FROM workspaces WHERE id = $1`,
       [workspaceId]
     );
 
-    const rawSprintStartDate = workspaceResult.rows[0]?.sprint_start_date;
+    const rawSprintStartDate = workspaceRow?.sprint_start_date;
     const sprintDurationDays = 7; // 1-week sprints
     const today = new Date();
 
@@ -971,12 +972,12 @@ router.get('/people/:personId/sprint-metrics', authMiddleware, async (req: Reque
     }
 
     // Get workspace sprint start date
-    const workspaceResult = await pool.query(
+    const workspaceRow = await queryOne<{ sprint_start_date: Date | string }>(
       `SELECT sprint_start_date FROM workspaces WHERE id = $1`,
       [workspaceId]
     );
 
-    const rawSprintStartDate = workspaceResult.rows[0]?.sprint_start_date;
+    const rawSprintStartDate = workspaceRow?.sprint_start_date;
     const sprintDurationDays = 7; // 1-week sprints
     const today = new Date();
 
@@ -1306,10 +1307,10 @@ router.get('/accountability-grid-v2', authMiddleware, async (req: Request, res: 
             return [
               week.number,
               {
-                planId: planData?.id || null,
-                planStatus: calculateStatus(planData?.id || null, planData?.content, weekStartDate, 'plan'),
-                retroId: retroData?.id || null,
-                retroStatus: calculateStatus(retroData?.id || null, retroData?.content, weekStartDate, 'retro'),
+                planId: planData?.id ?? null,
+                planStatus: calculateStatus(planData?.id ?? null, planData?.content, weekStartDate, 'plan'),
+                retroId: retroData?.id ?? null,
+                retroStatus: calculateStatus(retroData?.id ?? null, retroData?.content, weekStartDate, 'retro'),
               },
             ];
           })
@@ -1524,12 +1525,12 @@ router.get('/reviews', authMiddleware, async (req: Request, res: Response) => {
         const key = `${row.person_id}_${row.sprint_number}`;
         sprintMap.set(key, {
           sprintId: row.sprint_id,
-          planApproval: row.plan_approval || null,
-          reviewApproval: row.review_approval || null,
-          reviewRating: row.review_rating || null,
-          programId: row.program_id || null,
-          programName: row.program_name || null,
-          programColor: row.program_color || null,
+          planApproval: row.plan_approval ?? null,
+          reviewApproval: row.review_approval ?? null,
+          reviewRating: row.review_rating ?? null,
+          programId: row.program_id ?? null,
+          programName: row.program_name ?? null,
+          programColor: row.program_color ?? null,
         });
       }
     }
@@ -1540,10 +1541,10 @@ router.get('/reviews', authMiddleware, async (req: Request, res: Response) => {
       return {
         personId: p.id,
         name: p.name,
-        programId: currentSprint?.programId || null,
-        programName: currentSprint?.programName || null,
-        programColor: currentSprint?.programColor || null,
-        reportsTo: p.reportsTo || null,
+        programId: currentSprint?.programId ?? null,
+        programName: currentSprint?.programName ?? null,
+        programColor: currentSprint?.programColor ?? null,
+        reportsTo: p.reportsTo ?? null,
       };
     });
 
@@ -1578,14 +1579,14 @@ router.get('/reviews', authMiddleware, async (req: Request, res: Response) => {
         const retro = retroContent.get(contentKey);
 
         personReviews[week.number] = {
-          planApproval: sprint?.planApproval || null,
-          reviewApproval: sprint?.reviewApproval || null,
-          reviewRating: sprint?.reviewRating || null,
+          planApproval: sprint?.planApproval ?? null,
+          reviewApproval: sprint?.reviewApproval ?? null,
+          reviewRating: sprint?.reviewRating ?? null,
           hasPlan: plan?.hasContent || false,
           hasRetro: retro?.hasContent || false,
-          sprintId: sprint?.sprintId || null,
-          planDocId: plan?.docId || null,
-          retroDocId: retro?.docId || null,
+          sprintId: sprint?.sprintId ?? null,
+          planDocId: plan?.docId ?? null,
+          retroDocId: retro?.docId ?? null,
         };
       }
       reviews[person.id] = personReviews;
@@ -1741,8 +1742,8 @@ router.get('/accountability-grid-v3', authMiddleware, async (req: Request, res: 
         programId: row.program_id,
         programName: row.program_name,
         programColor: row.program_color,
-        planApprovalState: row.plan_approval_state || null,
-        reviewApprovalState: row.review_approval_state || null,
+        planApprovalState: row.plan_approval_state ?? null,
+        reviewApprovalState: row.review_approval_state ?? null,
       };
     }
 
@@ -1927,19 +1928,19 @@ router.get('/accountability-grid-v3', authMiddleware, async (req: Request, res: 
           const planData = projectId ? plans.get(`${projectId}_${personId}_${week.number}`) : null;
           const retroData = projectId ? retros.get(`${projectId}_${personId}_${week.number}`) : null;
           const weekStartDate = new Date(week.startDate);
-          const planApprovalState = allocation?.planApprovalState || null;
-          const reviewApprovalState = allocation?.reviewApprovalState || null;
+          const planApprovalState = allocation?.planApprovalState ?? null;
+          const reviewApprovalState = allocation?.reviewApprovalState ?? null;
 
           return [
             week.number,
             {
-              projectId: projectId || null,
-              projectName: allocation?.projectName || null,
-              projectColor: allocation?.projectColor || null,
-              planId: planData?.id || null,
-              planStatus: projectId ? calculateStatus(planData?.id || null, planData?.content, weekStartDate, 'plan', planApprovalState) : null,
-              retroId: retroData?.id || null,
-              retroStatus: projectId ? calculateStatus(retroData?.id || null, retroData?.content, weekStartDate, 'retro', reviewApprovalState) : null,
+              projectId: projectId ?? null,
+              projectName: allocation?.projectName ?? null,
+              projectColor: allocation?.projectColor ?? null,
+              planId: planData?.id ?? null,
+              planStatus: projectId ? calculateStatus(planData?.id ?? null, planData?.content, weekStartDate, 'plan', planApprovalState) : null,
+              retroId: retroData?.id ?? null,
+              retroStatus: projectId ? calculateStatus(retroData?.id ?? null, retroData?.content, weekStartDate, 'retro', reviewApprovalState) : null,
             },
           ];
         })
@@ -2020,12 +2021,12 @@ router.get('/accountability-grid', authMiddleware, async (req: Request, res: Res
     }
 
     // Get workspace sprint start date
-    const workspaceResult = await pool.query(
+    const workspaceRow = await queryOne<{ sprint_start_date: Date | string }>(
       `SELECT sprint_start_date FROM workspaces WHERE id = $1`,
       [workspaceId]
     );
 
-    const rawSprintStartDate = workspaceResult.rows[0]?.sprint_start_date;
+    const rawSprintStartDate = workspaceRow?.sprint_start_date;
     const sprintDurationDays = 7;
     const today = new Date();
 

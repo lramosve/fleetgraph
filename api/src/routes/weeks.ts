@@ -31,7 +31,7 @@ async function getSprintOwnerReportsTo(sprintId: string, workspaceId: string): P
      WHERE d.id = $1 AND d.workspace_id = $2 AND d.document_type = 'sprint'`,
     [sprintId, workspaceId]
   );
-  return result.rows[0]?.reports_to || null;
+  return result.rows[0]?.reports_to ?? null;
 }
 
 /**
@@ -181,9 +181,33 @@ const updatePlanSchema = z.object({
   confidence: z.number().int().min(0).max(100).optional(),
 });
 
+// Row type for sprint query results
+interface SprintRow {
+  id: string;
+  title: string;
+  properties: Record<string, unknown>;
+  owner_id: string | null;
+  owner_name: string | null;
+  owner_email: string | null;
+  program_id: string | null;
+  program_name: string | null;
+  program_prefix: string | null;
+  program_accountable_id: string | null;
+  owner_reports_to: string | null;
+  workspace_sprint_start_date: string | null;
+  issue_count: string;
+  completed_count: string;
+  started_count: string;
+  has_plan: boolean | string;
+  has_retro: boolean | string;
+  retro_outcome: string | null;
+  retro_id: string | null;
+  [key: string]: unknown;
+}
+
 // Helper to extract sprint from row
 // Dates and status are computed on frontend from sprint_number + workspace.sprint_start_date
-function extractSprintFromRow(row: any) {
+function extractSprintFromRow(row: SprintRow) {
   const props = row.properties || {};
   return {
     id: row.id,
@@ -198,8 +222,8 @@ function extractSprintFromRow(row: any) {
     program_id: row.program_id,
     program_name: row.program_name,
     program_prefix: row.program_prefix,
-    program_accountable_id: row.program_accountable_id || null,
-    owner_reports_to: row.owner_reports_to || null,
+    program_accountable_id: row.program_accountable_id ?? null,
+    owner_reports_to: row.owner_reports_to ?? null,
     workspace_sprint_start_date: row.workspace_sprint_start_date,
     issue_count: parseInt(row.issue_count) || 0,
     completed_count: parseInt(row.completed_count) || 0,
@@ -207,26 +231,26 @@ function extractSprintFromRow(row: any) {
     has_plan: row.has_plan === true || row.has_plan === 't',
     has_retro: row.has_retro === true || row.has_retro === 't',
     // Retro outcome summary (populated if retro exists)
-    retro_outcome: row.retro_outcome || null,
-    retro_id: row.retro_id || null,
+    retro_outcome: row.retro_outcome ?? null,
+    retro_id: row.retro_id ?? null,
     // Plan tracking fields - what will we learn/validate?
-    plan: props.plan || null,
-    success_criteria: props.success_criteria || null,
+    plan: props.plan ?? null,
+    success_criteria: props.success_criteria ?? null,
     confidence: typeof props.confidence === 'number' ? props.confidence : null,
-    plan_history: props.plan_history || null,
+    plan_history: props.plan_history ?? null,
     // Completeness flags
     is_complete: props.is_complete ?? null,
     missing_fields: props.missing_fields ?? [],
     // Plan snapshot (populated when sprint becomes active)
-    planned_issue_ids: props.planned_issue_ids || null,
-    snapshot_taken_at: props.snapshot_taken_at || null,
+    planned_issue_ids: props.planned_issue_ids ?? null,
+    snapshot_taken_at: props.snapshot_taken_at ?? null,
     // Approval tracking
-    plan_approval: props.plan_approval || null,
-    review_approval: props.review_approval || null,
+    plan_approval: props.plan_approval ?? null,
+    review_approval: props.review_approval ?? null,
     // Performance rating (OPM 5-level scale)
-    review_rating: props.review_rating || null,
+    review_rating: props.review_rating ?? null,
     // Accountability (sprints inherit from program, but may have direct assignment)
-    accountable_id: props.accountable_id || null,
+    accountable_id: props.accountable_id ?? null,
   };
 }
 
@@ -716,7 +740,7 @@ router.get('/my-week', authMiddleware, async (req: Request, res: Response) => {
         title: row.issue_title,
         state: issueProps.state || 'backlog',
         priority: issueProps.priority || 'medium',
-        assignee_id: issueProps.assignee_id || null,
+        assignee_id: issueProps.assignee_id ?? null,
         assignee_name: row.assignee_name,
         assignee_archived: row.assignee_archived || false,
         estimate: issueProps.estimate ?? null,
@@ -733,9 +757,9 @@ router.get('/my-week', authMiddleware, async (req: Request, res: Response) => {
     // Calculate totals
     const totalIssues = groups.reduce((sum, g) => sum + g.issues.length, 0);
     const completedIssues = groups.reduce((sum, g) =>
-      sum + g.issues.filter((i: any) => i.state === 'done').length, 0);
+      sum + g.issues.filter((i: { state: string }) => i.state === 'done').length, 0);
     const inProgressIssues = groups.reduce((sum, g) =>
-      sum + g.issues.filter((i: any) => i.state === 'in_progress' || i.state === 'in_review').length, 0);
+      sum + g.issues.filter((i: { state: string }) => i.state === 'in_progress' || i.state === 'in_review').length, 0);
 
     res.json({
       groups,
@@ -1021,16 +1045,16 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
         name: ownerData.name,
         email: ownerData.email,
       } : null,
-      program_id: program_id || null,
+      program_id: program_id ?? null,
       workspace_sprint_start_date: sprintStartDate,
       issue_count: 0,
       completed_count: 0,
       started_count: 0,
       // Plan tracking fields - what will we learn/validate?
-      plan: properties.plan || null,
-      success_criteria: properties.success_criteria || null,
+      plan: properties.plan ?? null,
+      success_criteria: properties.success_criteria ?? null,
       confidence: properties.confidence ?? null,
-      plan_history: properties.plan_history || null,
+      plan_history: properties.plan_history ?? null,
     });
   } catch (err) {
     console.error('Create sprint error:', err);
@@ -1109,7 +1133,7 @@ router.patch('/:id', authMiddleware, async (req: Request, res: Response) => {
       // Store as assignee_ids array (migration converted owner_id to assignee_ids)
       // Also store owner_id directly for accountability checks
       newProps.assignee_ids = data.owner_id ? [data.owner_id] : [];
-      newProps.owner_id = data.owner_id || null;
+      newProps.owner_id = data.owner_id ?? null;
       propsChanged = true;
     }
 
@@ -1463,8 +1487,8 @@ router.patch('/:id/plan', authMiddleware, async (req: Request, res: Response) =>
       await logDocumentChange(
         id as string,
         'plan',
-        currentProps.plan || null,
-        data.plan || null,
+        currentProps.plan ?? null,
+        data.plan ?? null,
         userId
       );
     }
@@ -1599,13 +1623,13 @@ router.get('/:id/issues', authMiddleware, async (req: Request, res: Response) =>
 
     const issues = result.rows.map(row => {
       const props = row.properties || {};
-      const carryoverFromSprintId = props.carryover_from_sprint_id || null;
+      const carryoverFromSprintId = props.carryover_from_sprint_id ?? null;
       return {
         id: row.id,
         title: row.title,
         state: props.state || 'backlog',
         priority: props.priority || 'medium',
-        assignee_id: props.assignee_id || null,
+        assignee_id: props.assignee_id ?? null,
         estimate: props.estimate ?? null,
         ticket_number: row.ticket_number,
         created_at: row.created_at,
@@ -1616,7 +1640,7 @@ router.get('/:id/issues', authMiddleware, async (req: Request, res: Response) =>
         display_id: `#${row.ticket_number}`,
         carryover_from_sprint_id: carryoverFromSprintId,
         carryover_from_sprint_name: carryoverFromSprintId
-          ? carryoverSprintNames[carryoverFromSprintId] || null
+          ? carryoverSprintNames[carryoverFromSprintId] ?? null
           : null,
       };
     });
@@ -1813,8 +1837,22 @@ const createStandupSchema = z.object({
   date: z.string().optional(), // ISO date string - must be today if provided
 });
 
+// Row type for standup query results
+interface StandupRow {
+  id: string;
+  parent_id: string | null;
+  title: string;
+  content: unknown;
+  author_id: string;
+  author_name: string | null;
+  author_email: string | null;
+  created_at: string;
+  updated_at: string;
+  [key: string]: unknown;
+}
+
 // Helper to format standup response
-function formatStandupResponse(row: any) {
+function formatStandupResponse(row: StandupRow) {
   return {
     id: row.id,
     sprint_id: row.parent_id,
@@ -2020,8 +2058,8 @@ router.post('/:id/standups', authMiddleware, async (req: Request, res: Response)
       title: standup.title,
       content: standup.content,
       author_id: userId,
-      author_name: author?.name || null,
-      author_email: author?.email || null,
+      author_name: author?.name ?? null,
+      author_email: author?.email ?? null,
       created_at: standup.created_at,
       updated_at: standup.updated_at,
     });
@@ -2042,8 +2080,23 @@ const sprintReviewSchema = z.object({
   plan_validated: z.boolean().nullable().optional(),
 });
 
+// Types for sprint review content generation
+interface ReviewSprintData {
+  sprint_number: number;
+  program_name: string | null;
+  plan: string | null;
+  [key: string]: unknown;
+}
+
+interface ReviewIssue {
+  title: string;
+  properties: Record<string, unknown>;
+  ticket_number?: number;
+  [key: string]: unknown;
+}
+
 // Helper to generate pre-filled sprint review content
-async function generatePrefilledReviewContent(sprintData: any, issues: any[]) {
+async function generatePrefilledReviewContent(sprintData: ReviewSprintData, issues: ReviewIssue[]) {
   // Categorize issues
   const issuesPlanned = issues.filter(i => {
     const props = i.properties || {};
@@ -2068,7 +2121,7 @@ async function generatePrefilledReviewContent(sprintData: any, issues: any[]) {
   });
 
   // Build TipTap content with suggested sections
-  const content: any = {
+  const content: { type: string; content: Record<string, unknown>[] } = {
     type: 'doc',
     content: [
       {
@@ -2231,9 +2284,9 @@ router.get('/:id/review', authMiddleware, async (req: Request, res: Response) =>
         title: review.title,
         content: review.content,
         plan_validated: reviewProps.plan_validated ?? null,
-        owner_id: reviewProps.owner_id || null,
-        owner_name: review.owner_name || null,
-        owner_email: review.owner_email || null,
+        owner_id: reviewProps.owner_id ?? null,
+        owner_name: review.owner_name ?? null,
+        owner_email: review.owner_email ?? null,
         created_at: review.created_at,
         updated_at: review.updated_at,
         is_draft: false,
@@ -2392,8 +2445,8 @@ router.post('/:id/review', authMiddleware, async (req: Request, res: Response) =
       content: review.content,
       plan_validated: plan_validated ?? null,
       owner_id: userId,
-      owner_name: owner?.name || null,
-      owner_email: owner?.email || null,
+      owner_name: owner?.name ?? null,
+      owner_email: owner?.email ?? null,
       created_at: review.created_at,
       updated_at: review.updated_at,
       is_draft: false,
@@ -2552,9 +2605,9 @@ router.patch('/:id/review', authMiddleware, async (req: Request, res: Response) 
       title: review.title,
       content: review.content,
       plan_validated: reviewProps.plan_validated ?? null,
-      owner_id: reviewProps.owner_id || null,
-      owner_name: review.owner_name || null,
-      owner_email: review.owner_email || null,
+      owner_id: reviewProps.owner_id ?? null,
+      owner_name: review.owner_name ?? null,
+      owner_email: review.owner_email ?? null,
       created_at: review.created_at,
       updated_at: review.updated_at,
       is_draft: false,
@@ -2690,12 +2743,12 @@ router.post('/:id/carryover', authMiddleware, async (req: Request, res: Response
       source_sprint: {
         id: sourceSprint.id,
         name: sourceSprint.title,
-        sprint_number: sourceSprint.properties?.sprint_number || null,
+        sprint_number: sourceSprint.properties?.sprint_number ?? null,
       },
       target_sprint: {
         id: targetSprint.id,
         name: targetSprint.title,
-        sprint_number: targetProps.sprint_number || null,
+        sprint_number: targetProps.sprint_number ?? null,
       },
     });
   } catch (err) {
@@ -2748,11 +2801,11 @@ router.post('/:id/approve-plan', authMiddleware, async (req: Request, res: Respo
 
     // Get the latest plan history entry for version tracking
     const historyEntry = await getLatestDocumentFieldHistory(id as string, 'plan');
-    const versionId = historyEntry?.id || null;
+    const versionId = historyEntry?.id ?? null;
 
     // Update sprint properties with approval
     const currentProps = sprint.properties || {};
-    const previousApproval = currentProps.plan_approval || null;
+    const previousApproval = currentProps.plan_approval ?? null;
     const previousComment = typeof previousApproval?.comment === 'string'
       ? previousApproval.comment
       : null;
@@ -2929,12 +2982,12 @@ router.post('/:id/approve-review', authMiddleware, async (req: Request, res: Res
     if (reviewResult.rows.length > 0) {
       const reviewId = reviewResult.rows[0].id;
       const historyEntry = await getLatestDocumentFieldHistory(reviewId, 'review_content');
-      versionId = historyEntry?.id || null;
+      versionId = historyEntry?.id ?? null;
     }
 
     // Update sprint properties with review approval and rating
     const currentProps = sprint.properties || {};
-    const previousApproval = currentProps.review_approval || null;
+    const previousApproval = currentProps.review_approval ?? null;
     const previousComment = typeof previousApproval?.comment === 'string'
       ? previousApproval.comment
       : null;

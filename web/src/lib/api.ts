@@ -2,14 +2,9 @@
 // In production, use VITE_API_URL or relative URLs
 const API_URL = import.meta.env.VITE_API_URL ?? '';
 
-interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: {
-    code: string;
-    message: string;
-  };
-}
+type ApiResponse<T> =
+  | { success: true; data: T; error?: never }
+  | { success: false; data?: never; error: { code: string; message: string } };
 
 // CSRF token cache for state-changing requests
 let csrfToken: string | null = null;
@@ -18,6 +13,15 @@ let csrfToken: string | null = null;
 function isJsonResponse(response: Response): boolean {
   const contentType = response.headers.get('content-type');
   return contentType?.includes('application/json') ?? false;
+}
+
+/** Convert a params object with mixed value types to URLSearchParams safely */
+function toSearchParams(params: Record<string, string | number | boolean | undefined>): URLSearchParams {
+  const qs = new URLSearchParams();
+  for (const [key, val] of Object.entries(params)) {
+    if (val != null) qs.set(key, String(val));
+  }
+  return qs;
 }
 
 /**
@@ -159,9 +163,20 @@ async function request<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> {
+  // Normalize headers from HeadersInit to plain object
+  const incomingHeaders: Record<string, string> = {};
+  if (options.headers) {
+    if (options.headers instanceof Headers) {
+      options.headers.forEach((v, k) => { incomingHeaders[k] = v; });
+    } else if (Array.isArray(options.headers)) {
+      for (const [k, v] of options.headers) { incomingHeaders[k] = v; }
+    } else {
+      Object.assign(incomingHeaders, options.headers);
+    }
+  }
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string>),
+    ...incomingHeaders,
   };
 
   // Add CSRF token for state-changing requests
@@ -407,7 +422,7 @@ export const api = {
     // Audit logs (workspace admin)
     getAuditLogs: (workspaceId: string, params?: { limit?: number; offset?: number }) =>
       request<{ logs: AuditLog[] }>(
-        `/api/workspaces/${workspaceId}/audit-logs${params ? `?${new URLSearchParams(params as Record<string, string>)}` : ''}`
+        `/api/workspaces/${workspaceId}/audit-logs${params ? `?${toSearchParams(params as Record<string, string | number | boolean | undefined>)}` : ''}`
       ),
   },
 
@@ -489,10 +504,10 @@ export const api = {
 
     // Audit logs (super-admin)
     getAuditLogs: (params?: { workspaceId?: string; userId?: string; action?: string; limit?: number; offset?: number }) =>
-      request<{ logs: AuditLog[] }>(`/api/admin/audit-logs${params ? `?${new URLSearchParams(params as Record<string, string>)}` : ''}`),
+      request<{ logs: AuditLog[] }>(`/api/admin/audit-logs${params ? `?${toSearchParams(params as Record<string, string | number | boolean | undefined>)}` : ''}`),
 
     exportAuditLogs: (params?: { workspaceId?: string; userId?: string; action?: string; from?: string; to?: string }) =>
-      `${API_URL}/api/admin/audit-logs/export${params ? `?${new URLSearchParams(params as Record<string, string>)}` : ''}`,
+      `${API_URL}/api/admin/audit-logs/export${params ? `?${toSearchParams(params as Record<string, string | number | boolean | undefined>)}` : ''}`,
 
     // Impersonation
     startImpersonation: (userId: string) =>

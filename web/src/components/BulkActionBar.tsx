@@ -89,16 +89,18 @@ export function BulkActionBar({
   // Close dropdowns when clicking outside
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (statusRef.current && !statusRef.current.contains(e.target as Node)) {
+      const target = e.target;
+      if (!(target instanceof Node)) return;
+      if (statusRef.current && !statusRef.current.contains(target)) {
         setStatusOpen(false);
       }
-      if (sprintRef.current && !sprintRef.current.contains(e.target as Node)) {
+      if (sprintRef.current && !sprintRef.current.contains(target)) {
         setSprintOpen(false);
       }
-      if (assigneeRef.current && !assigneeRef.current.contains(e.target as Node)) {
+      if (assigneeRef.current && !assigneeRef.current.contains(target)) {
         setAssigneeOpen(false);
       }
-      if (projectRef.current && !projectRef.current.contains(e.target as Node)) {
+      if (projectRef.current && !projectRef.current.contains(target)) {
         setProjectOpen(false);
       }
     }

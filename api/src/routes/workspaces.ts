@@ -298,9 +298,9 @@ router.get('/:id/members', authMiddleware, workspaceAdminMiddleware, async (req:
         userId: row.user_id,
         email: row.email,
         name: row.name,
-        role: null as unknown as string, // Archived users have no role
+        role: null as string | null,
         personDocumentId: row.person_document_id,
-        joinedAt: null as unknown as string, // No membership join date
+        joinedAt: null as string | null,
         isArchived: true,
       })),
     ];
@@ -758,7 +758,7 @@ router.post('/:id/invites', authMiddleware, workspaceAdminMiddleware, async (req
        WHERE wm.workspace_id = $1
          AND (($2::TEXT IS NOT NULL AND LOWER(u.email) = LOWER($2))
               OR ($3::TEXT IS NOT NULL AND u.x509_subject_dn = $3))`,
-      [workspaceId, email || null, x509SubjectDn || null]
+      [workspaceId, email ?? null, x509SubjectDn ?? null]
     );
 
     if (existingUserResult.rows[0]) {
@@ -778,7 +778,7 @@ router.post('/:id/invites', authMiddleware, workspaceAdminMiddleware, async (req
       `SELECT id, name, email FROM users
        WHERE ($1::TEXT IS NOT NULL AND LOWER(email) = LOWER($1))
           OR ($2::TEXT IS NOT NULL AND x509_subject_dn = $2)`,
-      [email || null, x509SubjectDn || null]
+      [email ?? null, x509SubjectDn ?? null]
     );
 
     if (existingNonMemberResult.rows[0]) {
@@ -889,7 +889,7 @@ router.post('/:id/invites', authMiddleware, workspaceAdminMiddleware, async (req
          AND expires_at > NOW()
          AND (($2::TEXT IS NOT NULL AND LOWER(email) = LOWER($2))
               OR ($3::TEXT IS NOT NULL AND x509_subject_dn = $3))`,
-      [workspaceId, email || null, x509SubjectDn || null]
+      [workspaceId, email ?? null, x509SubjectDn ?? null]
     );
 
     if (existingInviteResult.rows[0]) {
@@ -912,7 +912,7 @@ router.post('/:id/invites', authMiddleware, workspaceAdminMiddleware, async (req
       `INSERT INTO workspace_invites (workspace_id, email, x509_subject_dn, token, role, invited_by_user_id, expires_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING id, email, x509_subject_dn, role, expires_at, created_at`,
-      [workspaceId, email, x509SubjectDn || null, token, role, req.userId, expiresAt]
+      [workspaceId, email, x509SubjectDn ?? null, token, role, req.userId, expiresAt]
     );
 
     // Create pending person document for the invited user
@@ -934,7 +934,7 @@ router.post('/:id/invites', authMiddleware, workspaceAdminMiddleware, async (req
       action: 'invite.create',
       resourceType: 'invite',
       resourceId: result.rows[0].id,
-      details: { email: email || null, x509SubjectDn: x509SubjectDn || null, role },
+      details: { email: email ?? null, x509SubjectDn: x509SubjectDn ?? null, role },
       req,
     });
 

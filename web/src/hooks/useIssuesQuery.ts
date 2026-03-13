@@ -89,6 +89,27 @@ export function getSprintTitle(issue: Issue): string | null {
   return getAssociationTitle(issue, 'sprint');
 }
 
+/**
+ * Issue update payload - mutable Issue fields + API-only parameters.
+ * Prevents accidentally sending readonly fields (id, created_at, ticket_number)
+ * and properly surfaces API-only params that aren't on Issue.
+ */
+export type IssueUpdatePayload = Partial<Pick<Issue,
+  | 'title'
+  | 'state'
+  | 'priority'
+  | 'assignee_id'
+  | 'estimate'
+  | 'belongs_to'
+  | 'source'
+  | 'rejection_reason'
+>> & {
+  /** Confirm closing parent with incomplete children (API-only) */
+  confirm_orphan_children?: boolean;
+  /** Legacy sprint assignment (API-only, used by bulk update) */
+  sprint_id?: string | null;
+};
+
 // Filter interface for locked context
 export interface IssueFilters {
   programId?: string;
@@ -107,12 +128,31 @@ export const issueKeys = {
 
 // Transform API issue response to Issue type
 function transformIssue(apiIssue: Record<string, unknown>): Issue {
-  const belongs_to = (apiIssue.belongs_to as BelongsTo[]) || [];
+  const belongs_to = (Array.isArray(apiIssue.belongs_to) ? apiIssue.belongs_to : []) as BelongsTo[];
 
   return {
-    ...apiIssue,
+    id: apiIssue.id as string,
+    title: apiIssue.title as string,
+    state: (apiIssue.state as string) || 'backlog',
+    priority: (apiIssue.priority as string) || 'medium',
+    ticket_number: apiIssue.ticket_number as number,
+    display_id: apiIssue.display_id as string,
+    assignee_id: (apiIssue.assignee_id as string) || null,
+    assignee_name: (apiIssue.assignee_name as string) || null,
+    assignee_archived: apiIssue.assignee_archived as boolean | undefined,
+    estimate: (apiIssue.estimate as number) ?? null,
     belongs_to,
-  } as Issue;
+    source: (apiIssue.source as 'internal' | 'external') || 'internal',
+    rejection_reason: (apiIssue.rejection_reason as string) || null,
+    created_at: apiIssue.created_at as string | undefined,
+    updated_at: apiIssue.updated_at as string | undefined,
+    created_by: apiIssue.created_by as string | undefined,
+    started_at: (apiIssue.started_at as string) || null,
+    completed_at: (apiIssue.completed_at as string) || null,
+    cancelled_at: (apiIssue.cancelled_at as string) || null,
+    reopened_at: (apiIssue.reopened_at as string) || null,
+    converted_from_id: (apiIssue.converted_from_id as string) || null,
+  };
 }
 
 // Fetch issues with optional filters
@@ -168,7 +208,7 @@ async function createIssueApi(data: CreateIssueData): Promise<Issue> {
 }
 
 // Update issue
-async function updateIssueApi(id: string, updates: Partial<Issue>): Promise<Issue> {
+async function updateIssueApi(id: string, updates: IssueUpdatePayload): Promise<Issue> {
   // API accepts belongs_to directly - no conversion needed
   const res = await apiPatch(`/api/issues/${id}`, updates);
   if (!res.ok) {
@@ -264,7 +304,7 @@ export function useUpdateIssue() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, updates }: { id: string; updates: Partial<Issue> }) =>
+    mutationFn: ({ id, updates }: { id: string; updates: IssueUpdatePayload }) =>
       updateIssueApi(id, updates),
     onMutate: async ({ id, updates }) => {
       await queryClient.cancelQueries({ queryKey: issueKeys.lists() });
@@ -409,7 +449,7 @@ export function useIssues() {
     }
   };
 
-  const updateIssue = async (id: string, updates: Partial<Issue>): Promise<Issue | null> => {
+  const updateIssue = async (id: string, updates: IssueUpdatePayload): Promise<Issue | null> => {
     try {
       return await updateMutation.mutateAsync({ id, updates });
     } catch (error) {

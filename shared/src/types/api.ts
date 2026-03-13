@@ -1,9 +1,7 @@
-// API types
-export interface ApiResponse<T = unknown> {
-  success: boolean;
-  data?: T;
-  error?: ApiError;
-}
+// API types - discriminated union prevents invalid states
+export type ApiResponse<T = unknown> =
+  | { success: true; data: T; error?: never }
+  | { success: false; data?: never; error: ApiError };
 
 export interface ApiError {
   code: string;

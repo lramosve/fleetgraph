@@ -8,8 +8,28 @@
 import { Router, Request, Response } from 'express';
 import { authMiddleware } from '../middleware/auth.js';
 import { checkMissingAccountability } from '../services/accountability.js';
+import type { AccountabilityType } from '@ship/shared';
 
 const router = Router();
+
+/** Action item returned to the frontend */
+interface ActionItem {
+  id: string;
+  title: string;
+  state: 'todo';
+  priority: 'high';
+  ticket_number: 0;
+  display_id: '';
+  is_system_generated: true;
+  accountability_type: AccountabilityType;
+  accountability_target_id: string;
+  target_title: string;
+  due_date: string | null;
+  days_overdue: number;
+  person_id: string | null;
+  project_id: string | null;
+  week_number: number | null;
+}
 
 /**
  * GET /api/accountability/action-items
@@ -38,19 +58,27 @@ router.get('/action-items', authMiddleware, async (req: Request, res: Response) 
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
 
+    // Types that have no due date but should show as urgent
+    const URGENT_NO_DATE_TYPES: ReadonlySet<string> = new Set([
+      'changes_requested_plan',
+      'changes_requested_retro',
+    ]);
+
     const items = missingItems.map((item) => {
-      let daysOverdue = -999; // Default for items with no due date
+      let daysOverdue: number;
 
       if (item.dueDate) {
         const dueDate = new Date(item.dueDate + 'T00:00:00Z');
         const diffTime = today.getTime() - dueDate.getTime();
         daysOverdue = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-      } else if (item.type === 'changes_requested_plan' || item.type === 'changes_requested_retro') {
+      } else if (URGENT_NO_DATE_TYPES.has(item.type)) {
         // Changes requested items have no due date but should show as "due today" urgency
         daysOverdue = 0;
+      } else {
+        daysOverdue = -999; // Default for items with no due date
       }
 
-      return {
+      const actionItem: ActionItem = {
         // Synthetic ID for the item (not a real document ID)
         id: `${item.type}-${item.targetId}`,
         // Title is the human-readable message
@@ -68,10 +96,11 @@ router.get('/action-items', authMiddleware, async (req: Request, res: Response) 
         due_date: item.dueDate,
         days_overdue: daysOverdue,
         // Additional metadata for weekly_plan navigation
-        person_id: item.personId || null,
-        project_id: item.projectId || null,
-        week_number: item.weekNumber || null,
+        person_id: item.personId ?? null,
+        project_id: item.projectId ?? null,
+        week_number: item.weekNumber ?? null,
       };
+      return actionItem;
     });
 
     // Sort by urgency: overdue first (highest days_overdue), then by due date

@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { pool } from '../db/client.js';
+import { queryOne } from '../db/query-helpers.js';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/auth.js';
 import { isWorkspaceAdmin } from '../middleware/visibility.js';
@@ -10,13 +11,26 @@ import { loadContentFromYjsState } from '../utils/yjsConverter.js';
 type RouterType = ReturnType<typeof Router>;
 const router: RouterType = Router();
 
+interface DocumentRow {
+  id: string;
+  title: string;
+  document_type: string;
+  workspace_id: string;
+  created_by: string;
+  visibility: string;
+  properties: Record<string, unknown>;
+  content: unknown;
+  can_access: boolean;
+  [key: string]: unknown;
+}
+
 // Check if user can access a document (visibility check)
 async function canAccessDocument(
   docId: string,
   userId: string,
   workspaceId: string
-): Promise<{ canAccess: boolean; doc: any | null }> {
-  const result = await pool.query(
+): Promise<{ canAccess: boolean; doc: DocumentRow | null }> {
+  const doc = await queryOne<DocumentRow>(
     `SELECT d.*,
             (d.visibility = 'workspace' OR d.created_by = $2 OR
              (SELECT role FROM workspace_memberships WHERE workspace_id = $3 AND user_id = $2) = 'admin') as can_access
@@ -25,11 +39,11 @@ async function canAccessDocument(
     [docId, userId, workspaceId]
   );
 
-  if (result.rows.length === 0) {
+  if (!doc) {
     return { canAccess: false, doc: null };
   }
 
-  return { canAccess: result.rows[0].can_access, doc: result.rows[0] };
+  return { canAccess: doc.can_access, doc };
 }
 
 // Validation schemas
@@ -339,16 +353,16 @@ router.get('/:id', authMiddleware, async (req: Request, res: Response) => {
       ease: props.ease,
       // For sprints, owner is stored in assignee_ids[0] (consistent with sprints API)
       owner_id: doc.document_type === 'sprint' && Array.isArray(props.assignee_ids)
-        ? props.assignee_ids[0] || null
+        ? props.assignee_ids[0] ?? null
         : props.owner_id,
       owner,
       // RACI properties (for projects and programs)
-      accountable_id: props.accountable_id || null,
+      accountable_id: props.accountable_id ?? null,
       consulted_ids: props.consulted_ids || [],
       informed_ids: props.informed_ids || [],
       // Design review (for projects)
       has_design_review: props.has_design_review ?? null,
-      design_review_notes: props.design_review_notes || null,
+      design_review_notes: props.design_review_notes ?? null,
       // Generic properties
       prefix: props.prefix,
       color: props.color,
@@ -534,7 +548,7 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
       `INSERT INTO documents (workspace_id, document_type, title, parent_id, properties, created_by, visibility, content)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
-      [req.workspaceId, document_type, title, parent_id || null, JSON.stringify(properties || {}), req.userId, visibility, content ? JSON.stringify(content) : null]
+      [req.workspaceId, document_type, title, parent_id ?? null, JSON.stringify(properties || {}), req.userId, visibility, content ? JSON.stringify(content) : null]
     );
 
     const newDoc = result.rows[0];
@@ -737,7 +751,7 @@ router.patch('/:id', authMiddleware, async (req: Request, res: Response) => {
     if (data.properties !== undefined || contentUpdated || hasTopLevelProps) {
       const currentProps = existing.properties || {};
       const dataProps = data.properties || {};
-      let newProps = {
+      let newProps: Record<string, unknown> = {
         ...currentProps,
         ...dataProps,
         ...topLevelProps,
@@ -1227,7 +1241,7 @@ router.post('/:id/convert', authMiddleware, async (req: Request, res: Response) 
         ease: 3,
         color: '#6366f1',
         owner_id: userId,
-        program_id: currentProps.program_id || null,
+        program_id: currentProps.program_id ?? null,
         // Track original ticket number for reference
         promoted_from_ticket: doc.ticket_number,
       };
@@ -1254,7 +1268,7 @@ router.post('/:id/convert', authMiddleware, async (req: Request, res: Response) 
         source: 'internal',
         assignee_id: null,
         rejection_reason: null,
-        program_id: currentProps.program_id || null,
+        program_id: currentProps.program_id ?? null,
         // Track conversion from project
         demoted_from_project: true,
       };

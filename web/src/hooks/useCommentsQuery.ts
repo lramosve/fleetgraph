@@ -23,7 +23,8 @@ export function useCommentsQuery(documentId: string | undefined) {
     queryFn: async () => {
       const response = await apiGet(`/api/documents/${documentId}/comments`);
       if (!response.ok) throw new Error('Failed to fetch comments');
-      return response.json();
+      const data: Comment[] = await response.json();
+      return data;
     },
     enabled: !!documentId,
   });
@@ -35,7 +36,8 @@ export function useCreateComment(documentId: string) {
     mutationFn: async (data: { comment_id: string; content: string; parent_id?: string }) => {
       const response = await apiPost(`/api/documents/${documentId}/comments`, data);
       if (!response.ok) throw new Error('Failed to create comment');
-      return response.json();
+      const comment: Comment = await response.json();
+      return comment;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['comments', documentId] });
@@ -49,7 +51,8 @@ export function useUpdateComment(documentId: string) {
     mutationFn: async ({ commentId, ...data }: { commentId: string; content?: string; resolved_at?: string | null }) => {
       const response = await apiPatch(`/api/comments/${commentId}`, data);
       if (!response.ok) throw new Error('Failed to update comment');
-      return response.json();
+      const comment: Comment = await response.json();
+      return comment;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['comments', documentId] });
@@ -63,7 +66,8 @@ export function useDeleteComment(documentId: string) {
     mutationFn: async (commentId: string) => {
       const response = await apiDelete(`/api/comments/${commentId}`);
       if (!response.ok) throw new Error('Failed to delete comment');
-      return response.json();
+      const result: { success: boolean } = await response.json();
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['comments', documentId] });

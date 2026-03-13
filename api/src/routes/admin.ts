@@ -969,7 +969,7 @@ router.post('/workspaces/:id/invites', async (req: Request, res: Response): Prom
        WHERE wm.workspace_id = $1
          AND (($2::TEXT IS NOT NULL AND LOWER(u.email) = $2)
               OR ($3::TEXT IS NOT NULL AND u.x509_subject_dn = $3))`,
-      [id, emailLower, x509SubjectDn || null]
+      [id, emailLower, x509SubjectDn ?? null]
     );
     if (memberCheck.rows[0]) {
       res.status(HTTP_STATUS.CONFLICT).json({
@@ -990,7 +990,7 @@ router.post('/workspaces/:id/invites', async (req: Request, res: Response): Prom
          AND expires_at > NOW()
          AND (($2::TEXT IS NOT NULL AND LOWER(email) = $2)
               OR ($3::TEXT IS NOT NULL AND x509_subject_dn = $3))`,
-      [id, emailLower, x509SubjectDn || null]
+      [id, emailLower, x509SubjectDn ?? null]
     );
     if (inviteCheck.rows[0]) {
       res.status(HTTP_STATUS.CONFLICT).json({
@@ -1012,7 +1012,7 @@ router.post('/workspaces/:id/invites', async (req: Request, res: Response): Prom
       `INSERT INTO workspace_invites (workspace_id, email, x509_subject_dn, role, token, expires_at, invited_by_user_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING id, email, x509_subject_dn, role, token, created_at`,
-      [id, emailLower, x509SubjectDn || null, role, token, expiresAt, req.userId]
+      [id, emailLower, x509SubjectDn ?? null, role, token, expiresAt, req.userId]
     );
 
     const invite = result.rows[0];
@@ -1023,7 +1023,7 @@ router.post('/workspaces/:id/invites', async (req: Request, res: Response): Prom
       action: 'workspace.invite_create',
       resourceType: 'workspace_invite',
       resourceId: invite.id,
-      details: { email: emailLower, x509SubjectDn: x509SubjectDn || null, role },
+      details: { email: emailLower, x509SubjectDn: x509SubjectDn ?? null, role },
       req,
     });
 

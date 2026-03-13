@@ -26,7 +26,7 @@ interface OrphanReport {
   entity_id: string;
   entity_title: string;
   workspace_name: string;
-  created_at: Date;
+  created_at: string;
   additional_info: Record<string, unknown>;
 }
 

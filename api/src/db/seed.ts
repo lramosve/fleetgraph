@@ -676,7 +676,7 @@ async function seed() {
         const sprint = sprints.find(
           s => s.programId === shipCoreProgram.id && s.number === targetSprintNumber
         );
-        sprintId = sprint?.id || null;
+        sprintId = sprint?.id ?? null;
       }
 
       // Check if issue already exists (via junction table association to program)
@@ -748,7 +748,7 @@ async function seed() {
           const sprint = sprints.find(
             s => s.programId === program.id && s.number === targetSprintNumber
           );
-          sprintId = sprint?.id || null;
+          sprintId = sprint?.id ?? null;
         }
 
         // Check if issue already exists (via junction table association to program)

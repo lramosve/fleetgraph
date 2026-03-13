@@ -41,7 +41,8 @@ export function useActionItemsQuery() {
       if (!response.ok) {
         throw new Error('Failed to fetch action items');
       }
-      return response.json();
+      const data: ActionItemsResponse = await response.json();
+      return data;
     },
     // Refetch frequently since these are important accountability items
     staleTime: 30 * 1000, // 30 seconds

@@ -26,7 +26,7 @@ export interface IncompleteChild {
 export interface CascadeWarning {
   error: 'incomplete_children';
   message: string;
-  incomplete_children: IncompleteChild[];
+  readonly incomplete_children: readonly IncompleteChild[];
   confirm_action: string;
 }
 
@@ -69,7 +69,8 @@ export type AccountabilityType =
 export type WeekStatus = 'active' | 'upcoming' | 'completed';
 
 // Properties interfaces for each document type
-// Each includes index signature for JSONB compatibility
+// No index signatures - Document<P> generic parameter provides type safety
+// without requiring the escape hatch of [key: string]: unknown.
 export interface IssueProperties {
   state: IssueState;
   priority: IssuePriority;
@@ -85,7 +86,6 @@ export interface IssueProperties {
   accountability_target_id?: string | null;
   // Type of accountability task
   accountability_type?: AccountabilityType | null;
-  [key: string]: unknown;
 }
 
 export interface ProgramProperties {
@@ -94,9 +94,8 @@ export interface ProgramProperties {
   // RACI accountability fields
   owner_id?: string | null;        // R - Responsible (does the work)
   accountable_id?: string | null;  // A - Accountable (approver for hypotheses/reviews)
-  consulted_ids?: string[];        // C - Consulted (provide input, stubbed for now)
-  informed_ids?: string[];         // I - Informed (kept in loop, stubbed for now)
-  [key: string]: unknown;
+  readonly consulted_ids?: readonly string[];        // C - Consulted (provide input, stubbed for now)
+  readonly informed_ids?: readonly string[];         // I - Informed (kept in loop, stubbed for now)
 }
 
 // ICE score type (1-5 scale for prioritization)
@@ -110,8 +109,8 @@ export interface ProjectProperties {
   // RACI accountability fields
   owner_id?: string | null;        // R - Responsible (does the work)
   accountable_id?: string | null;  // A - Accountable (approver for hypotheses/reviews)
-  consulted_ids?: string[];        // C - Consulted (provide input, stubbed for now)
-  informed_ids?: string[];         // I - Informed (kept in loop, stubbed for now)
+  readonly consulted_ids?: readonly string[];        // C - Consulted (provide input, stubbed for now)
+  readonly informed_ids?: readonly string[];         // I - Informed (kept in loop, stubbed for now)
   // Visual identification
   color: string;
   emoji?: string | null;
@@ -119,7 +118,7 @@ export interface ProjectProperties {
   plan_validated?: boolean | null;  // null = not yet determined, true = validated, false = invalidated
   monetary_impact_expected?: string | null;  // Expected monetary value (e.g., "$50K annual savings")
   monetary_impact_actual?: string | null;    // Actual monetary impact after completion
-  success_criteria?: string[] | null;        // Array of measurable success criteria
+  readonly success_criteria?: readonly string[] | null;        // Array of measurable success criteria
   next_steps?: string | null;                // Recommended follow-up actions
   // Approval tracking for accountability workflow
   plan_approval?: ApprovalTracking | null;  // Approval status for project plan
@@ -127,7 +126,6 @@ export interface ProjectProperties {
   // Design review tracking
   has_design_review?: boolean | null;  // Whether design review has been completed
   design_review_notes?: string | null; // Optional notes from design review
-  [key: string]: unknown;
 }
 
 // Plan history entry for tracking plan changes over time
@@ -157,9 +155,9 @@ export interface WeekProperties {
   status?: 'planning' | 'active' | 'completed';  // Sprint workflow status (default: 'planning')
   // Plan tracking (for Ship-Claude integration)
   plan?: string | null;           // Current plan statement
-  success_criteria?: string[] | null;   // Array of measurable success criteria
+  readonly success_criteria?: readonly string[] | null;   // Array of measurable success criteria
   confidence?: number | null;           // Confidence level 0-100
-  plan_history?: PlanHistoryEntry[] | null;  // History of plan changes
+  readonly plan_history?: readonly PlanHistoryEntry[] | null;  // History of plan changes
   // Approval tracking for accountability workflow
   plan_approval?: ApprovalTracking | null;  // Approval status for sprint plan
   review_approval?: ApprovalTracking | null;      // Approval status for sprint review
@@ -169,7 +167,6 @@ export interface WeekProperties {
     rated_by: string;      // User ID who rated
     rated_at: string;      // ISO 8601 timestamp
   } | null;
-  [key: string]: unknown;
 }
 
 export interface PersonProperties {
@@ -177,21 +174,19 @@ export interface PersonProperties {
   role?: string | null;
   capacity_hours?: number | null;
   reports_to?: string | null;
-  [key: string]: unknown;
 }
 
 // Wiki properties - optional maintainer
 export interface WikiProperties {
   maintainer_id?: string | null;
-  [key: string]: unknown;
 }
+
 // Weekly plan properties - per-person-per-week accountability document
 export interface WeeklyPlanProperties {
   person_id: string;       // REQUIRED - person document ID who wrote this plan
   project_id?: string;     // OPTIONAL - legacy field, no longer used for uniqueness
   week_number: number;     // REQUIRED - week number (same as sprint_number concept)
   submitted_at?: string | null;  // ISO timestamp when first saved with content
-  [key: string]: unknown;
 }
 
 // Weekly retro properties - per-person-per-week retrospective document
@@ -200,7 +195,6 @@ export interface WeeklyRetroProperties {
   project_id?: string;     // OPTIONAL - legacy field, no longer used for uniqueness
   week_number: number;     // REQUIRED - week number (same as sprint_number concept)
   submitted_at?: string | null;  // ISO timestamp when first saved with content
-  [key: string]: unknown;
 }
 
 // Standup properties - standalone daily entries per user
@@ -208,7 +202,6 @@ export interface StandupProperties {
   author_id: string;  // REQUIRED - who posted this standup (user ID)
   date?: string;      // OPTIONAL - ISO date string (e.g., '2026-02-24') for standalone standups
   submitted_at?: string | null;  // ISO timestamp when first saved with content
-  [key: string]: unknown;
 }
 
 // Weekly review properties - one per week, tracks plan validation
@@ -216,7 +209,6 @@ export interface WeeklyReviewProperties {
   sprint_id: string;          // REQUIRED - which sprint/week this reviews
   owner_id: string;           // REQUIRED - who is accountable for this review
   plan_validated: boolean | null;  // null = not yet determined
-  [key: string]: unknown;
 }
 
 // Union of all properties types
@@ -232,11 +224,13 @@ export type DocumentProperties =
   | StandupProperties
   | WeeklyReviewProperties;
 
-// Base document interface
-export interface Document {
-  id: string;
-  workspace_id: string;
-  document_type: DocumentType;
+// Base document interface - generic P defaults to Record<string, unknown> for
+// untyped access. Typed variants (IssueDocument, ProjectDocument, etc.) narrow P
+// to the specific properties interface, enabling type-safe property access.
+export interface Document<P = Record<string, unknown>> {
+  readonly id: string;
+  readonly workspace_id: string;
+  readonly document_type: DocumentType;
   title: string;
   content: Record<string, unknown>;
   yjs_state?: Uint8Array | null;
@@ -244,76 +238,66 @@ export interface Document {
   position: number;
   // Note: program_id, project_id, and sprint_id removed - use belongs_to array instead
   // These columns were dropped by migrations 027 and 029
-  properties: Record<string, unknown>;
-  ticket_number?: number | null;
-  archived_at?: Date | null;
-  created_at: Date;
-  updated_at: Date;
-  created_by?: string | null;
+  properties: P;
+  readonly ticket_number?: number | null;
+  archived_at?: string | null;        // ISO 8601 timestamp (JSON-serialized from DB TIMESTAMPTZ)
+  readonly created_at: string;        // ISO 8601 timestamp
+  updated_at: string;                 // ISO 8601 timestamp
+  readonly created_by?: string | null;
   // Document visibility (private = creator only, workspace = all members)
   visibility: DocumentVisibility;
-  // Status timestamps (primarily for issues)
-  started_at?: Date | null;
-  completed_at?: Date | null;
-  cancelled_at?: Date | null;
-  reopened_at?: Date | null;
+  // Status timestamps (primarily for issues) - ISO 8601 timestamps
+  started_at?: string | null;
+  completed_at?: string | null;
+  cancelled_at?: string | null;
+  reopened_at?: string | null;
   // Document conversion tracking (issue <-> project)
   converted_to_id?: string | null;    // Points to new doc (set on archived original)
   converted_from_id?: string | null;  // Points to original (set on new doc)
-  converted_at?: Date | null;         // When conversion occurred
+  converted_at?: string | null;       // ISO 8601 timestamp
   converted_by?: string | null;       // User who performed conversion
 }
 
 // Typed document variants for type safety in application code
-export interface WikiDocument extends Document {
+export interface WikiDocument extends Document<WikiProperties> {
   document_type: 'wiki';
-  properties: WikiProperties;
 }
 
-export interface IssueDocument extends Document {
+export interface IssueDocument extends Document<IssueProperties> {
   document_type: 'issue';
-  properties: IssueProperties;
   ticket_number: number;
 }
 
-export interface ProgramDocument extends Document {
+export interface ProgramDocument extends Document<ProgramProperties> {
   document_type: 'program';
-  properties: ProgramProperties;
 }
 
-export interface ProjectDocument extends Document {
+export interface ProjectDocument extends Document<ProjectProperties> {
   document_type: 'project';
-  properties: ProjectProperties;
 }
 
-export interface WeekDocument extends Document {
+export interface WeekDocument extends Document<WeekProperties> {
   document_type: 'sprint';
-  properties: WeekProperties;
 }
 
-export interface PersonDocument extends Document {
+export interface PersonDocument extends Document<PersonProperties> {
   document_type: 'person';
-  properties: PersonProperties;
 }
 
-export interface WeeklyPlanDocument extends Document {
+export interface WeeklyPlanDocument extends Document<WeeklyPlanProperties> {
   document_type: 'weekly_plan';
-  properties: WeeklyPlanProperties;
 }
 
-export interface WeeklyRetroDocument extends Document {
+export interface WeeklyRetroDocument extends Document<WeeklyRetroProperties> {
   document_type: 'weekly_retro';
-  properties: WeeklyRetroProperties;
 }
 
-export interface StandupDocument extends Document {
+export interface StandupDocument extends Document<StandupProperties> {
   document_type: 'standup';
-  properties: StandupProperties;
 }
 
-export interface WeeklyReviewDocument extends Document {
+export interface WeeklyReviewDocument extends Document<WeeklyReviewProperties> {
   document_type: 'weekly_review';
-  properties: WeeklyReviewProperties;
 }
 
 // Default project properties - ICE and owner start as null (not yet set)

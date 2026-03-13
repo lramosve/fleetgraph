@@ -75,11 +75,13 @@ export async function logDocumentChange(
  * const updates = getTimestampUpdates('triage', 'in_progress');
  * // Returns: { started_at: 'COALESCE(started_at, NOW())' }
  */
+type TimestampColumn = 'started_at' | 'completed_at' | 'cancelled_at' | 'reopened_at';
+
 export function getTimestampUpdates(
   oldState: string | null,
   newState: string
-): Record<string, string> {
-  const updates: Record<string, string> = {};
+): Partial<Record<TimestampColumn, string>> {
+  const updates: Partial<Record<TimestampColumn, string>> = {};
 
   if (newState === 'in_progress' && oldState !== 'in_progress') {
     if (oldState === 'done' || oldState === 'cancelled') {
@@ -422,7 +424,7 @@ export async function updateSprintAssociation(
  * @example
  * const programsMap = await getProgramAssociationsBatch(projectIds);
  * for (const project of projects) {
- *   project.program = programsMap.get(project.id) || null;
+ *   project.program = programsMap.get(project.id) ?? null;
  * }
  */
 export async function getProgramAssociationsBatch(
@@ -490,7 +492,7 @@ export async function getUserInfo(
  * @example
  * const usersMap = await getUserInfoBatch(userIds);
  * for (const item of items) {
- *   item.owner = usersMap.get(item.owner_id) || null;
+ *   item.owner = usersMap.get(item.owner_id) ?? null;
  * }
  */
 export async function getUserInfoBatch(
@@ -535,7 +537,7 @@ export interface DocumentFieldHistoryEntry {
   changedByName?: string;
   changedByEmail?: string;
   automatedBy: string | null;
-  createdAt: Date;
+  createdAt: string;  // ISO 8601 timestamp
 }
 
 /**

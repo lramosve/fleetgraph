@@ -1,12 +1,14 @@
 // Workspace types
 
+export type WorkspaceRole = 'admin' | 'member';
+
 export interface Workspace {
   id: string;
   name: string;
-  sprintStartDate: Date;
-  archivedAt: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
+  sprintStartDate: string;    // ISO 8601 timestamp
+  archivedAt: string | null;
+  createdAt: string;           // ISO 8601 timestamp
+  updatedAt: string;           // ISO 8601 timestamp
 }
 
 export interface WorkspaceMembership {
@@ -14,9 +16,9 @@ export interface WorkspaceMembership {
   workspaceId: string;
   userId: string;
   personDocumentId: string | null;
-  role: 'admin' | 'member';
-  createdAt: Date;
-  updatedAt: Date;
+  role: WorkspaceRole;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface WorkspaceInvite {
@@ -24,11 +26,11 @@ export interface WorkspaceInvite {
   workspaceId: string;
   email: string;
   token: string;
-  role: 'admin' | 'member';
+  role: WorkspaceRole;
   invitedByUserId: string;
-  expiresAt: Date;
-  usedAt: Date | null;
-  createdAt: Date;
+  expiresAt: string;          // ISO 8601 timestamp
+  usedAt: string | null;
+  createdAt: string;
 }
 
 export interface AuditLog {
@@ -39,15 +41,15 @@ export interface AuditLog {
   action: string;
   resourceType: string | null;
   resourceId: string | null;
-  details: Record<string, unknown> | null;
+  readonly details: Readonly<Record<string, unknown>> | null;
   ipAddress: string | null;
   userAgent: string | null;
-  createdAt: Date;
+  createdAt: string;
 }
 
 // Response types
 export interface WorkspaceWithRole extends Workspace {
-  role: 'admin' | 'member';
+  role: WorkspaceRole;
   isSuperAdmin?: boolean;
 }
 
@@ -56,7 +58,7 @@ export interface MemberWithUser {
   userId: string;
   email: string;
   name: string;
-  role: 'admin' | 'member';
+  role: WorkspaceRole;
   personDocumentId: string | null;
-  createdAt: Date;
+  createdAt: string;
 }
