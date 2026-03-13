@@ -2,14 +2,9 @@
 // In production, use VITE_API_URL or relative URLs
 const API_URL = import.meta.env.VITE_API_URL ?? '';
 
-interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: {
-    code: string;
-    message: string;
-  };
-}
+type ApiResponse<T> =
+  | { success: true; data: T; error?: never }
+  | { success: false; data?: never; error: { code: string; message: string } };
 
 // CSRF token cache for state-changing requests
 let csrfToken: string | null = null;

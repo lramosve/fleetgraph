@@ -298,9 +298,9 @@ router.get('/:id/members', authMiddleware, workspaceAdminMiddleware, async (req:
         userId: row.user_id,
         email: row.email,
         name: row.name,
-        role: null as unknown as string, // Archived users have no role
+        role: null as string | null,
         personDocumentId: row.person_document_id,
-        joinedAt: null as unknown as string, // No membership join date
+        joinedAt: null as string | null,
         isArchived: true,
       })),
     ];

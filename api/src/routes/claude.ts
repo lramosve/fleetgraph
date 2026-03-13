@@ -59,7 +59,9 @@ interface RetroIssueStats {
  */
 router.get('/context', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const { context_type, sprint_id, project_id } = req.query as unknown as ClaudeContextRequest;
+    const context_type = req.query.context_type as ClaudeContextRequest['context_type'] | undefined;
+    const sprint_id = req.query.sprint_id as string | undefined;
+    const project_id = req.query.project_id as string | undefined;
     const workspaceId = req.workspaceId;
 
     if (!workspaceId) {

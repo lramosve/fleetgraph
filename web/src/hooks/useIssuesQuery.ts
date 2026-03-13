@@ -107,12 +107,31 @@ export const issueKeys = {
 
 // Transform API issue response to Issue type
 function transformIssue(apiIssue: Record<string, unknown>): Issue {
-  const belongs_to = (apiIssue.belongs_to as BelongsTo[]) || [];
+  const belongs_to = (Array.isArray(apiIssue.belongs_to) ? apiIssue.belongs_to : []) as BelongsTo[];
 
   return {
-    ...apiIssue,
+    id: apiIssue.id as string,
+    title: apiIssue.title as string,
+    state: (apiIssue.state as string) || 'backlog',
+    priority: (apiIssue.priority as string) || 'medium',
+    ticket_number: apiIssue.ticket_number as number,
+    display_id: apiIssue.display_id as string,
+    assignee_id: (apiIssue.assignee_id as string) || null,
+    assignee_name: (apiIssue.assignee_name as string) || null,
+    assignee_archived: apiIssue.assignee_archived as boolean | undefined,
+    estimate: (apiIssue.estimate as number) ?? null,
     belongs_to,
-  } as Issue;
+    source: (apiIssue.source as 'internal' | 'external') || 'internal',
+    rejection_reason: (apiIssue.rejection_reason as string) || null,
+    created_at: apiIssue.created_at as string | undefined,
+    updated_at: apiIssue.updated_at as string | undefined,
+    created_by: apiIssue.created_by as string | undefined,
+    started_at: (apiIssue.started_at as string) || null,
+    completed_at: (apiIssue.completed_at as string) || null,
+    cancelled_at: (apiIssue.cancelled_at as string) || null,
+    reopened_at: (apiIssue.reopened_at as string) || null,
+    converted_from_id: (apiIssue.converted_from_id as string) || null,
+  };
 }
 
 // Fetch issues with optional filters

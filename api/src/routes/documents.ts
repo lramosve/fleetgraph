@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { pool } from '../db/client.js';
+import { queryOne } from '../db/query-helpers.js';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/auth.js';
 import { isWorkspaceAdmin } from '../middleware/visibility.js';
@@ -10,13 +11,26 @@ import { loadContentFromYjsState } from '../utils/yjsConverter.js';
 type RouterType = ReturnType<typeof Router>;
 const router: RouterType = Router();
 
+interface DocumentRow {
+  id: string;
+  title: string;
+  document_type: string;
+  workspace_id: string;
+  created_by: string;
+  visibility: string;
+  properties: Record<string, unknown>;
+  content: unknown;
+  can_access: boolean;
+  [key: string]: unknown;
+}
+
 // Check if user can access a document (visibility check)
 async function canAccessDocument(
   docId: string,
   userId: string,
   workspaceId: string
-): Promise<{ canAccess: boolean; doc: any | null }> {
-  const result = await pool.query(
+): Promise<{ canAccess: boolean; doc: DocumentRow | null }> {
+  const doc = await queryOne<DocumentRow>(
     `SELECT d.*,
             (d.visibility = 'workspace' OR d.created_by = $2 OR
              (SELECT role FROM workspace_memberships WHERE workspace_id = $3 AND user_id = $2) = 'admin') as can_access
@@ -25,11 +39,11 @@ async function canAccessDocument(
     [docId, userId, workspaceId]
   );
 
-  if (result.rows.length === 0) {
+  if (!doc) {
     return { canAccess: false, doc: null };
   }
 
-  return { canAccess: result.rows[0].can_access, doc: result.rows[0] };
+  return { canAccess: doc.can_access, doc };
 }
 
 // Validation schemas
@@ -737,7 +751,7 @@ router.patch('/:id', authMiddleware, async (req: Request, res: Response) => {
     if (data.properties !== undefined || contentUpdated || hasTopLevelProps) {
       const currentProps = existing.properties || {};
       const dataProps = data.properties || {};
-      let newProps = {
+      let newProps: Record<string, unknown> = {
         ...currentProps,
         ...dataProps,
         ...topLevelProps,

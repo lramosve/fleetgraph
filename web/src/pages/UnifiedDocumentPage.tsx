@@ -63,7 +63,9 @@ export function UnifiedDocumentPage() {
   // Sync current document context for rail highlighting
   useEffect(() => {
     if (document && id) {
-      const docType = document.document_type as 'wiki' | 'issue' | 'project' | 'program' | 'sprint' | 'person' | 'weekly_plan' | 'weekly_retro' | 'standup';
+      const validDocTypes = new Set(['wiki', 'issue', 'project', 'program', 'sprint', 'person', 'weekly_plan', 'weekly_retro', 'standup']);
+      type DocType = 'wiki' | 'issue' | 'project' | 'program' | 'sprint' | 'person' | 'weekly_plan' | 'weekly_retro' | 'standup';
+      const docType: DocType = validDocTypes.has(document.document_type) ? document.document_type as DocType : 'wiki';
       // Extract projectId for weekly documents
       const projectId = (document.document_type === 'weekly_plan' || document.document_type === 'weekly_retro')
         ? (document.properties?.project_id as string | undefined) ?? null

@@ -14,13 +14,33 @@ const router: RouterType = Router();
 // Inferred project status type
 type InferredProjectStatus = 'active' | 'planned' | 'completed' | 'backlog' | 'archived';
 
+const VALID_INFERRED_STATUSES = new Set<InferredProjectStatus>(['active', 'planned', 'completed', 'backlog', 'archived']);
+
+interface ProjectRow {
+  id: string;
+  title: string;
+  properties: Record<string, unknown>;
+  program_id: string | null;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+  owner_id: string | null;
+  owner_name: string | null;
+  owner_email: string | null;
+  sprint_count: string;
+  issue_count: string;
+  inferred_status: string;
+  converted_from_id: string | null;
+  [key: string]: unknown;
+}
+
 // Helper to extract project from row with computed ice_score
-function extractProjectFromRow(row: any) {
+function extractProjectFromRow(row: ProjectRow) {
   const props = row.properties || {};
   // ICE values can be null (not yet set) - don't default to 3
-  const impact = props.impact !== undefined ? props.impact : null;
-  const confidence = props.confidence !== undefined ? props.confidence : null;
-  const ease = props.ease !== undefined ? props.ease : null;
+  const impact = typeof props.impact === 'number' ? props.impact : null;
+  const confidence = typeof props.confidence === 'number' ? props.confidence : null;
+  const ease = typeof props.ease === 'number' ? props.ease : null;
 
   return {
     id: row.id,
@@ -52,7 +72,7 @@ function extractProjectFromRow(row: any) {
     is_complete: props.is_complete ?? null,
     missing_fields: props.missing_fields ?? [],
     // Inferred status (computed from sprint relationships)
-    inferred_status: row.inferred_status as InferredProjectStatus || 'backlog',
+    inferred_status: VALID_INFERRED_STATUSES.has(row.inferred_status as InferredProjectStatus) ? row.inferred_status as InferredProjectStatus : 'backlog',
     // Conversion tracking
     converted_from_id: row.converted_from_id || null,
     // RACI fields

@@ -1,5 +1,7 @@
 // Workspace types
 
+export type WorkspaceRole = 'admin' | 'member';
+
 export interface Workspace {
   id: string;
   name: string;
@@ -14,7 +16,7 @@ export interface WorkspaceMembership {
   workspaceId: string;
   userId: string;
   personDocumentId: string | null;
-  role: 'admin' | 'member';
+  role: WorkspaceRole;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -24,7 +26,7 @@ export interface WorkspaceInvite {
   workspaceId: string;
   email: string;
   token: string;
-  role: 'admin' | 'member';
+  role: WorkspaceRole;
   invitedByUserId: string;
   expiresAt: Date;
   usedAt: Date | null;
@@ -47,7 +49,7 @@ export interface AuditLog {
 
 // Response types
 export interface WorkspaceWithRole extends Workspace {
-  role: 'admin' | 'member';
+  role: WorkspaceRole;
   isSuperAdmin?: boolean;
 }
 
@@ -56,7 +58,7 @@ export interface MemberWithUser {
   userId: string;
   email: string;
   name: string;
-  role: 'admin' | 'member';
+  role: WorkspaceRole;
   personDocumentId: string | null;
   createdAt: Date;
 }

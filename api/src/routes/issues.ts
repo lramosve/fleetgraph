@@ -78,8 +78,28 @@ const rejectIssueSchema = z.object({
   reason: z.string().min(1).max(1000),
 });
 
+interface IssueRow {
+  id: string;
+  title: string;
+  ticket_number: number;
+  content: unknown;
+  properties: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+  started_at: string | null;
+  completed_at: string | null;
+  cancelled_at: string | null;
+  reopened_at: string | null;
+  converted_from_id: string | null;
+  assignee_name: string | null;
+  assignee_archived: boolean;
+  created_by_name: string | null;
+  [key: string]: unknown;
+}
+
 // Helper to extract issue properties from row (without belongs_to - added separately)
-function extractIssueFromRow(row: any) {
+function extractIssueFromRow(row: IssueRow) {
   const props = row.properties || {};
   return {
     id: row.id,
