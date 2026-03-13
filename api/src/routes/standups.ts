@@ -291,7 +291,7 @@ router.get('/status', authMiddleware, async (req: Request, res: Response) => {
       [workspaceId, userId, todayStr, activeSprints, today.toISOString()]
     );
 
-    const lastPosted = standupResult.rows[0]?.last_posted || null;
+    const lastPosted = standupResult.rows[0]?.last_posted ?? null;
     const due = !lastPosted;
 
     res.json({ due, lastPosted });

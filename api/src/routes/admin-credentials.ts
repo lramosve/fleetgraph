@@ -690,8 +690,8 @@ router.get('/status', authMiddleware, superAdminMiddleware, async (_req: Request
     success: true,
     data: {
       configured: result.configured,
-      issuerUrl: result.credentials?.issuer_url || null,
-      clientId: result.credentials?.client_id || null,
+      issuerUrl: result.credentials?.issuer_url ?? null,
+      clientId: result.credentials?.client_id ?? null,
       hasClientSecret: !!result.credentials?.client_secret,
       redirectUri: getRedirectUri(),
       secretPath: getCAIASecretPath(),

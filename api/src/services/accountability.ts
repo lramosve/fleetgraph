@@ -76,7 +76,7 @@ export async function checkMissingAccountability(
        AND (properties->>'user_id')::uuid = $2`,
     [workspaceId, userId]
   );
-  const personId = personResult.rows[0]?.id || null;
+  const personId = personResult.rows[0]?.id ?? null;
 
   // Parse workspace start date
   let workspaceStartDate: Date;
@@ -262,7 +262,7 @@ async function checkSprintAccountability(
   for (const sprint of sprintsResult.rows) {
     const props = sprint.properties || {};
     const sprintNumber = props.sprint_number || 1;
-    const projectId = sprint.project_id || null;
+    const projectId = sprint.project_id ?? null;
 
     // Calculate sprint start date
     const sprintStartDate = new Date(workspaceStartDate);
@@ -275,7 +275,7 @@ async function checkSprintAccountability(
 
     const sprintTitle = sprint.title || `Week ${sprintNumber}`;
 
-    const sprintStartStr = sprintStartDate.toISOString().split('T')[0] || null;
+    const sprintStartStr = sprintStartDate.toISOString().split('T')[0] ?? null;
 
     // NOTE: Sprint-level plan check REMOVED. Plans are now per-person weekly_plan documents,
     // checked by checkWeeklyPersonAccountability(). The old props.plan check on the sprint

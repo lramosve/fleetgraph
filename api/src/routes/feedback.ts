@@ -23,8 +23,26 @@ const rejectFeedbackSchema = z.object({
   reason: z.string().min(1).max(1000),
 });
 
+// Row type for feedback query results
+interface FeedbackRow {
+  id: string;
+  title: string;
+  properties: Record<string, unknown>;
+  ticket_number: number;
+  program_id: string | null;
+  content: unknown;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+  program_name: string | null;
+  program_prefix: string | null;
+  program_color: string | null;
+  created_by_name: string | null;
+  [key: string]: unknown;
+}
+
 // Helper to extract feedback from row
-function extractFeedbackFromRow(row: any, programPrefix?: string | null) {
+function extractFeedbackFromRow(row: FeedbackRow, programPrefix?: string | null) {
   const props = row.properties || {};
   return {
     id: row.id,
@@ -32,8 +50,8 @@ function extractFeedbackFromRow(row: any, programPrefix?: string | null) {
     state: props.state || 'triage',
     priority: props.priority || 'medium',
     source: props.source || 'external',
-    rejection_reason: props.rejection_reason || null,
-    assignee_id: props.assignee_id || null,
+    rejection_reason: props.rejection_reason ?? null,
+    assignee_id: props.assignee_id ?? null,
     ticket_number: row.ticket_number,
     program_id: row.program_id,
     content: row.content,
@@ -88,7 +106,7 @@ publicFeedbackRouter.post('/', async (req: Request, res: Response) => {
       state: 'triage',
       priority: 'medium',
       source: 'external',
-      submitter_email: submitter_email || null,
+      submitter_email: submitter_email ?? null,
       assignee_id: null,
       rejection_reason: null,
     };

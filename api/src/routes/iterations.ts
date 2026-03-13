@@ -58,7 +58,7 @@ router.post('/:id/iterations', authMiddleware, async (req: Request, res: Respons
        (sprint_id, workspace_id, story_id, story_title, status, what_attempted, blockers_encountered, author_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
-      [sprintId, workspaceId, story_id || null, story_title, status, what_attempted || null, blockers_encountered || null, userId]
+      [sprintId, workspaceId, story_id ?? null, story_title, status, what_attempted ?? null, blockers_encountered ?? null, userId]
     );
 
     // Get author info

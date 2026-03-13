@@ -52,9 +52,9 @@ function extractProjectFromRow(row: ProjectRow) {
     ice_score: computeICEScore(impact, confidence, ease),
     // Visual properties
     color: props.color || DEFAULT_PROJECT_PROPERTIES.color,
-    emoji: props.emoji || null,
+    emoji: props.emoji ?? null,
     // Associations
-    program_id: row.program_id || null,
+    program_id: row.program_id ?? null,
     // Timestamps
     archived_at: row.archived_at,
     created_at: row.created_at,
@@ -74,21 +74,21 @@ function extractProjectFromRow(row: ProjectRow) {
     // Inferred status (computed from sprint relationships)
     inferred_status: VALID_INFERRED_STATUSES.has(row.inferred_status as InferredProjectStatus) ? row.inferred_status as InferredProjectStatus : 'backlog',
     // Conversion tracking
-    converted_from_id: row.converted_from_id || null,
+    converted_from_id: row.converted_from_id ?? null,
     // RACI fields
-    owner_id: props.owner_id || null,
-    accountable_id: props.accountable_id || null,
+    owner_id: props.owner_id ?? null,
+    accountable_id: props.accountable_id ?? null,
     consulted_ids: props.consulted_ids || [],
     informed_ids: props.informed_ids || [],
     // Hypothesis and approval tracking
-    plan: props.plan || null,
-    plan_approval: props.plan_approval || null,
-    retro_approval: props.retro_approval || null,
+    plan: props.plan ?? null,
+    plan_approval: props.plan_approval ?? null,
+    retro_approval: props.retro_approval ?? null,
     has_retro: props.has_retro ?? false,
-    target_date: props.target_date || null,
+    target_date: props.target_date ?? null,
     // Design review
     has_design_review: props.has_design_review ?? null,
-    design_review_notes: props.design_review_notes || null,
+    design_review_notes: props.design_review_notes ?? null,
   };
 }
 
@@ -139,8 +139,28 @@ const projectRetroSchema = z.object({
   content: z.record(z.unknown()).optional(), // TipTap content for narrative
 });
 
+// Types for retro content generation
+interface RetroProjectData {
+  title: string;
+  properties: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+interface RetroIssue {
+  title: string;
+  state: string;
+  ticket_number?: number;
+  [key: string]: unknown;
+}
+
+interface RetroSprint {
+  sprint_number: number;
+  name: string;
+  [key: string]: unknown;
+}
+
 // Helper to generate pre-filled retro content for a project
-async function generatePrefilledRetroContent(projectData: any, sprints: any[], issues: any[]) {
+async function generatePrefilledRetroContent(projectData: RetroProjectData, sprints: RetroSprint[], issues: RetroIssue[]) {
   const props = projectData.properties || {};
 
   // Categorize issues by state
@@ -149,7 +169,7 @@ async function generatePrefilledRetroContent(projectData: any, sprints: any[], i
   const activeIssues = issues.filter(i => !['done', 'cancelled'].includes(i.state));
 
   // Build TipTap content
-  const content: any = {
+  const content: { type: string; content: Record<string, unknown>[] } = {
     type: 'doc',
     content: [
       {
@@ -167,9 +187,9 @@ async function generatePrefilledRetroContent(projectData: any, sprints: any[], i
   };
 
   // Add ICE Score section
-  const impact = props.impact;
-  const confidence = props.confidence;
-  const ease = props.ease;
+  const impact = typeof props.impact === 'number' ? props.impact : null;
+  const confidence = typeof props.confidence === 'number' ? props.confidence : null;
+  const ease = typeof props.ease === 'number' ? props.ease : null;
   const iceScore = (impact !== null && confidence !== null && ease !== null)
     ? impact * confidence * ease
     : null;
@@ -606,7 +626,7 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
     }
 
     res.status(201).json({
-      ...extractProjectFromRow({ ...result.rows[0], program_id: program_id || null, inferred_status: 'backlog' }),
+      ...extractProjectFromRow({ ...result.rows[0], program_id: program_id ?? null, inferred_status: 'backlog' }),
       sprint_count: 0,
       issue_count: 0,
       owner,
@@ -786,8 +806,8 @@ router.patch('/:id', authMiddleware, async (req: Request, res: Response) => {
       await logDocumentChange(
         id as string,
         'plan',
-        currentProps.plan || null,
-        data.plan || null,
+        currentProps.plan ?? null,
+        data.plan ?? null,
         userId
       );
     }
@@ -968,17 +988,17 @@ router.get('/:id/retro', authMiddleware, async (req: Request, res: Response) => 
       res.json({
         is_draft: false,
         plan_validated: props.plan_validated,
-        monetary_impact_expected: props.monetary_impact_expected || null,
-        monetary_impact_actual: props.monetary_impact_actual || null,
+        monetary_impact_expected: props.monetary_impact_expected ?? null,
+        monetary_impact_actual: props.monetary_impact_actual ?? null,
         success_criteria: props.success_criteria || [],
-        next_steps: props.next_steps || null,
+        next_steps: props.next_steps ?? null,
         content: projectData.content || {},
         weeks: sprintsResult.rows,
         issues_summary: {
           total: issuesResult.rows.length,
-          completed: issuesResult.rows.filter((i: any) => i.state === 'done').length,
-          cancelled: issuesResult.rows.filter((i: any) => i.state === 'cancelled').length,
-          active: issuesResult.rows.filter((i: any) => !['done', 'cancelled'].includes(i.state)).length,
+          completed: issuesResult.rows.filter((i: { state: string }) => i.state === 'done').length,
+          cancelled: issuesResult.rows.filter((i: { state: string }) => i.state === 'cancelled').length,
+          active: issuesResult.rows.filter((i: { state: string }) => !['done', 'cancelled'].includes(i.state)).length,
         },
       });
     } else {
@@ -992,7 +1012,7 @@ router.get('/:id/retro', authMiddleware, async (req: Request, res: Response) => 
       res.json({
         is_draft: true,
         plan_validated: null,
-        monetary_impact_expected: props.monetary_impact_expected || null,
+        monetary_impact_expected: props.monetary_impact_expected ?? null,
         monetary_impact_actual: null,
         success_criteria: [],
         next_steps: null,
@@ -1000,9 +1020,9 @@ router.get('/:id/retro', authMiddleware, async (req: Request, res: Response) => 
         weeks: sprintsResult.rows,
         issues_summary: {
           total: issuesResult.rows.length,
-          completed: issuesResult.rows.filter((i: any) => i.state === 'done').length,
-          cancelled: issuesResult.rows.filter((i: any) => i.state === 'cancelled').length,
-          active: issuesResult.rows.filter((i: any) => !['done', 'cancelled'].includes(i.state)).length,
+          completed: issuesResult.rows.filter((i: { state: string }) => i.state === 'done').length,
+          cancelled: issuesResult.rows.filter((i: { state: string }) => i.state === 'cancelled').length,
+          active: issuesResult.rows.filter((i: { state: string }) => !['done', 'cancelled'].includes(i.state)).length,
         },
       });
     }
@@ -1092,10 +1112,10 @@ router.post('/:id/retro', authMiddleware, async (req: Request, res: Response) =>
     res.status(201).json({
       is_draft: false,
       plan_validated: updatedProps.plan_validated,
-      monetary_impact_expected: updatedProps.monetary_impact_expected || null,
-      monetary_impact_actual: updatedProps.monetary_impact_actual || null,
+      monetary_impact_expected: updatedProps.monetary_impact_expected ?? null,
+      monetary_impact_actual: updatedProps.monetary_impact_actual ?? null,
       success_criteria: updatedProps.success_criteria || [],
-      next_steps: updatedProps.next_steps || null,
+      next_steps: updatedProps.next_steps ?? null,
       content: result.rows[0].content || {},
     });
   } catch (err) {
@@ -1118,8 +1138,28 @@ const createProjectSprintSchema = z.object({
   confidence: z.number().int().min(0).max(100).optional(),
 });
 
+// Row type for sprint query results within project context
+interface ProjectSprintRow {
+  id: string;
+  title: string;
+  properties: Record<string, unknown>;
+  owner_id: string | null;
+  owner_name: string | null;
+  owner_email: string | null;
+  project_id: string | null;
+  project_name: string | null;
+  program_id: string | null;
+  program_name: string | null;
+  program_prefix: string | null;
+  workspace_sprint_start_date: string | null;
+  issue_count: string;
+  completed_count: string;
+  started_count: string;
+  [key: string]: unknown;
+}
+
 // Helper to extract sprint from row (matches sprints.ts pattern)
-function extractSprintFromRow(row: any) {
+function extractSprintFromRow(row: ProjectSprintRow) {
   const props = row.properties || {};
   return {
     id: row.id,
@@ -1131,8 +1171,8 @@ function extractSprintFromRow(row: any) {
       name: row.owner_name,
       email: row.owner_email,
     } : null,
-    project_id: row.project_id || null,
-    project_name: row.project_name || null,
+    project_id: row.project_id ?? null,
+    project_name: row.project_name ?? null,
     program_id: row.program_id,
     program_name: row.program_name,
     program_prefix: row.program_prefix,
@@ -1140,8 +1180,8 @@ function extractSprintFromRow(row: any) {
     issue_count: parseInt(row.issue_count) || 0,
     completed_count: parseInt(row.completed_count) || 0,
     started_count: parseInt(row.started_count) || 0,
-    plan: props.plan || null,
-    success_criteria: props.success_criteria || null,
+    plan: props.plan ?? null,
+    success_criteria: props.success_criteria ?? null,
     confidence: typeof props.confidence === 'number' ? props.confidence : null,
   };
 }
@@ -1203,7 +1243,7 @@ router.get('/:id/issues', authMiddleware, async (req: Request, res: Response) =>
         ticket_number: row.ticket_number,
         state: props.state || 'backlog',
         priority: props.priority || 'medium',
-        assignee_id: props.assignee_id || null,
+        assignee_id: props.assignee_id ?? null,
         assignee_name: row.assignee_name,
         created_at: row.created_at,
         updated_at: row.updated_at,
@@ -1500,8 +1540,8 @@ router.post('/:id/sprints', authMiddleware, async (req: Request, res: Response) 
       issue_count: 0,
       completed_count: 0,
       started_count: 0,
-      plan: properties.plan || null,
-      success_criteria: properties.success_criteria || null,
+      plan: properties.plan ?? null,
+      success_criteria: properties.success_criteria ?? null,
       confidence: properties.confidence ?? null,
     });
   } catch (err) {
@@ -1612,10 +1652,10 @@ router.patch('/:id/retro', authMiddleware, async (req: Request, res: Response) =
     res.json({
       is_draft: false,
       plan_validated: updatedProps.plan_validated,
-      monetary_impact_expected: updatedProps.monetary_impact_expected || null,
-      monetary_impact_actual: updatedProps.monetary_impact_actual || null,
+      monetary_impact_expected: updatedProps.monetary_impact_expected ?? null,
+      monetary_impact_actual: updatedProps.monetary_impact_actual ?? null,
       success_criteria: updatedProps.success_criteria || [],
-      next_steps: updatedProps.next_steps || null,
+      next_steps: updatedProps.next_steps ?? null,
       content: result.rows[0].content || {},
     });
   } catch (err) {
@@ -1659,7 +1699,7 @@ router.post('/:id/approve-plan', authMiddleware, async (req: Request, res: Respo
 
     // Get the latest plan history entry for version tracking
     const historyEntry = await getLatestDocumentFieldHistory(id as string, 'plan');
-    const versionId = historyEntry?.id || null;
+    const versionId = historyEntry?.id ?? null;
 
     // Update project properties with approval
     const newProps = {
@@ -1723,7 +1763,7 @@ router.post('/:id/approve-retro', authMiddleware, async (req: Request, res: Resp
 
     // Get the latest retro content history entry for version tracking
     const historyEntry = await getLatestDocumentFieldHistory(id as string, 'retro_content');
-    const versionId = historyEntry?.id || null;
+    const versionId = historyEntry?.id ?? null;
 
     // Update project properties with retro approval
     const newProps = {

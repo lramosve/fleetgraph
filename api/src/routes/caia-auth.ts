@@ -392,7 +392,7 @@ async function findUserByEmail(email: string): Promise<{
      LIMIT 1`,
     [email]
   );
-  return result.rows[0] || null;
+  return result.rows[0] ?? null;
 }
 
 /**
@@ -421,7 +421,7 @@ async function findPendingInviteByEmail(email: string): Promise<PendingInvite | 
      LIMIT 1`,
     [email]
   );
-  return result.rows[0] || null;
+  return result.rows[0] ?? null;
 }
 
 /**

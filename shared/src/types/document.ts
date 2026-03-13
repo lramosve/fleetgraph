@@ -69,7 +69,10 @@ export type AccountabilityType =
 export type WeekStatus = 'active' | 'upcoming' | 'completed';
 
 // Properties interfaces for each document type
-// Each includes index signature for JSONB compatibility
+// Index signatures ([key: string]: unknown) are required because typed document
+// variants (e.g., IssueDocument) extend Document whose `properties` field is
+// Record<string, unknown>. Without them, TypeScript errors on the extends clause.
+// To fully remove them, Document would need to become generic: Document<P>.
 export interface IssueProperties {
   state: IssueState;
   priority: IssuePriority;
@@ -246,21 +249,21 @@ export interface Document {
   // These columns were dropped by migrations 027 and 029
   properties: Record<string, unknown>;
   readonly ticket_number?: number | null;
-  archived_at?: Date | null;
-  readonly created_at: Date;
-  updated_at: Date;
+  archived_at?: string | null;        // ISO 8601 timestamp (JSON-serialized from DB TIMESTAMPTZ)
+  readonly created_at: string;        // ISO 8601 timestamp
+  updated_at: string;                 // ISO 8601 timestamp
   readonly created_by?: string | null;
   // Document visibility (private = creator only, workspace = all members)
   visibility: DocumentVisibility;
-  // Status timestamps (primarily for issues)
-  started_at?: Date | null;
-  completed_at?: Date | null;
-  cancelled_at?: Date | null;
-  reopened_at?: Date | null;
+  // Status timestamps (primarily for issues) - ISO 8601 timestamps
+  started_at?: string | null;
+  completed_at?: string | null;
+  cancelled_at?: string | null;
+  reopened_at?: string | null;
   // Document conversion tracking (issue <-> project)
   converted_to_id?: string | null;    // Points to new doc (set on archived original)
   converted_from_id?: string | null;  // Points to original (set on new doc)
-  converted_at?: Date | null;         // When conversion occurred
+  converted_at?: string | null;       // ISO 8601 timestamp
   converted_by?: string | null;       // User who performed conversion
 }
 

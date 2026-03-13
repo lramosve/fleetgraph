@@ -94,7 +94,7 @@ documentCommentsRouter.post('/:id/comments', authMiddleware, async (req: Request
       `INSERT INTO comments (document_id, comment_id, parent_id, author_id, workspace_id, content)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
-      [documentId, comment_id, parent_id || null, userId, workspaceId, content]
+      [documentId, comment_id, parent_id ?? null, userId, workspaceId, content]
     );
 
     const comment = result.rows[0];

@@ -424,7 +424,7 @@ export async function updateSprintAssociation(
  * @example
  * const programsMap = await getProgramAssociationsBatch(projectIds);
  * for (const project of projects) {
- *   project.program = programsMap.get(project.id) || null;
+ *   project.program = programsMap.get(project.id) ?? null;
  * }
  */
 export async function getProgramAssociationsBatch(
@@ -492,7 +492,7 @@ export async function getUserInfo(
  * @example
  * const usersMap = await getUserInfoBatch(userIds);
  * for (const item of items) {
- *   item.owner = usersMap.get(item.owner_id) || null;
+ *   item.owner = usersMap.get(item.owner_id) ?? null;
  * }
  */
 export async function getUserInfoBatch(
@@ -537,7 +537,7 @@ export interface DocumentFieldHistoryEntry {
   changedByName?: string;
   changedByEmail?: string;
   automatedBy: string | null;
-  createdAt: Date;
+  createdAt: string;  // ISO 8601 timestamp
 }
 
 /**

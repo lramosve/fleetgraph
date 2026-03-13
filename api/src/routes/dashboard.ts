@@ -462,7 +462,7 @@ router.get('/my-focus', authMiddleware, async (req: Request, res: Response) => {
       return {
         id: row.project_id,
         title: row.project_title,
-        program_name: row.program_name || null,
+        program_name: row.program_name ?? null,
         plan: currentPlan
           ? { id: currentPlan.id, week_number: currentWeekNumber, items: currentPlan.items }
           : { id: null, week_number: currentWeekNumber, items: [] },
@@ -582,7 +582,7 @@ router.get('/my-week', authMiddleware, async (req: Request, res: Response) => {
       ? {
           id: planResult.rows[0].id,
           title: planResult.rows[0].title,
-          submitted_at: planResult.rows[0].properties?.submitted_at || null,
+          submitted_at: planResult.rows[0].properties?.submitted_at ?? null,
           items: extractPlanItems(planResult.rows[0].content),
         }
       : null;
@@ -605,7 +605,7 @@ router.get('/my-week', authMiddleware, async (req: Request, res: Response) => {
       ? {
           id: retroResult.rows[0].id,
           title: retroResult.rows[0].title,
-          submitted_at: retroResult.rows[0].properties?.submitted_at || null,
+          submitted_at: retroResult.rows[0].properties?.submitted_at ?? null,
           items: extractPlanItems(retroResult.rows[0].content),
         }
       : null;
@@ -630,7 +630,7 @@ router.get('/my-week', authMiddleware, async (req: Request, res: Response) => {
         ? {
             id: prevRetroResult.rows[0].id,
             title: prevRetroResult.rows[0].title,
-            submitted_at: prevRetroResult.rows[0].properties?.submitted_at || null,
+            submitted_at: prevRetroResult.rows[0].properties?.submitted_at ?? null,
             week_number: previousWeekNumber,
           }
         : { id: null, title: null, submitted_at: null, week_number: previousWeekNumber };
@@ -703,7 +703,7 @@ router.get('/my-week', authMiddleware, async (req: Request, res: Response) => {
     const projects = allocationsResult.rows.map(row => ({
       id: row.project_id,
       title: row.project_title,
-      program_name: row.program_name || null,
+      program_name: row.program_name ?? null,
     }));
 
     // 8. Assemble response

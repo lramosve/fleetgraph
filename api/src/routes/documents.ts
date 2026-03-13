@@ -353,16 +353,16 @@ router.get('/:id', authMiddleware, async (req: Request, res: Response) => {
       ease: props.ease,
       // For sprints, owner is stored in assignee_ids[0] (consistent with sprints API)
       owner_id: doc.document_type === 'sprint' && Array.isArray(props.assignee_ids)
-        ? props.assignee_ids[0] || null
+        ? props.assignee_ids[0] ?? null
         : props.owner_id,
       owner,
       // RACI properties (for projects and programs)
-      accountable_id: props.accountable_id || null,
+      accountable_id: props.accountable_id ?? null,
       consulted_ids: props.consulted_ids || [],
       informed_ids: props.informed_ids || [],
       // Design review (for projects)
       has_design_review: props.has_design_review ?? null,
-      design_review_notes: props.design_review_notes || null,
+      design_review_notes: props.design_review_notes ?? null,
       // Generic properties
       prefix: props.prefix,
       color: props.color,
@@ -548,7 +548,7 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
       `INSERT INTO documents (workspace_id, document_type, title, parent_id, properties, created_by, visibility, content)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
-      [req.workspaceId, document_type, title, parent_id || null, JSON.stringify(properties || {}), req.userId, visibility, content ? JSON.stringify(content) : null]
+      [req.workspaceId, document_type, title, parent_id ?? null, JSON.stringify(properties || {}), req.userId, visibility, content ? JSON.stringify(content) : null]
     );
 
     const newDoc = result.rows[0];
@@ -1241,7 +1241,7 @@ router.post('/:id/convert', authMiddleware, async (req: Request, res: Response) 
         ease: 3,
         color: '#6366f1',
         owner_id: userId,
-        program_id: currentProps.program_id || null,
+        program_id: currentProps.program_id ?? null,
         // Track original ticket number for reference
         promoted_from_ticket: doc.ticket_number,
       };
@@ -1268,7 +1268,7 @@ router.post('/:id/convert', authMiddleware, async (req: Request, res: Response) 
         source: 'internal',
         assignee_id: null,
         rejection_reason: null,
-        program_id: currentProps.program_id || null,
+        program_id: currentProps.program_id ?? null,
         // Track conversion from project
         demoted_from_project: true,
       };

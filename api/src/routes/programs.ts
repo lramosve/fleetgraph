@@ -8,14 +8,30 @@ import { logAuditEvent } from '../services/audit.js';
 type RouterType = ReturnType<typeof Router>;
 const router: RouterType = Router();
 
+// Row type for program query results
+interface ProgramRow {
+  id: string;
+  title: string;
+  properties: Record<string, unknown>;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+  issue_count: string;
+  sprint_count: string;
+  owner_id: string | null;
+  owner_name: string | null;
+  owner_email: string | null;
+  [key: string]: unknown;
+}
+
 // Helper to extract program from row
-function extractProgramFromRow(row: any) {
+function extractProgramFromRow(row: ProgramRow) {
   const props = row.properties || {};
   return {
     id: row.id,
     name: row.title,
     color: props.color || '#6366f1',
-    emoji: props.emoji || null,
+    emoji: props.emoji ?? null,
     archived_at: row.archived_at,
     created_at: row.created_at,
     updated_at: row.updated_at,
@@ -27,9 +43,9 @@ function extractProgramFromRow(row: any) {
       name: row.owner_name,
       email: row.owner_email,
     } : null,
-    owner_id: props.owner_id || null,
+    owner_id: props.owner_id ?? null,
     // RACI fields
-    accountable_id: props.accountable_id || null,
+    accountable_id: props.accountable_id ?? null,
     consulted_ids: props.consulted_ids || [],
     informed_ids: props.informed_ids || [],
   };
@@ -411,7 +427,7 @@ router.get('/:id/issues', authMiddleware, async (req: Request, res: Response) =>
         title: row.title,
         state: props.state || 'backlog',
         priority: props.priority || 'medium',
-        assignee_id: props.assignee_id || null,
+        assignee_id: props.assignee_id ?? null,
         estimate: props.estimate ?? null,
         ticket_number: row.ticket_number,
         sprint_id: row.sprint_id,
@@ -491,7 +507,7 @@ router.get('/:id/projects', authMiddleware, async (req: Request, res: Response) 
         ease,
         ice_score: impact * confidence * ease,
         color: props.color || '#6366f1',
-        emoji: props.emoji || null,
+        emoji: props.emoji ?? null,
         program_id: row.program_id,
         archived_at: row.archived_at,
         created_at: row.created_at,
@@ -590,10 +606,10 @@ router.get('/:id/sprints', authMiddleware, async (req: Request, res: Response) =
         total_estimate_hours: parseFloat(row.total_estimate_hours) || 0,
         has_plan: row.has_plan === true || row.has_plan === 't',
         has_retro: row.has_retro === true || row.has_retro === 't',
-        plan_created_at: row.plan_created_at || null,
-        retro_created_at: row.retro_created_at || null,
+        plan_created_at: row.plan_created_at ?? null,
+        retro_created_at: row.retro_created_at ?? null,
         // Plan tracking - what will we learn/validate?
-        plan: props.plan || null,
+        plan: props.plan ?? null,
       };
     });
 

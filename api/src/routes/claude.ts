@@ -339,7 +339,7 @@ async function getReviewContext(sprintId: string, workspaceId: string) {
     LIMIT 1
   `, [sprintId, workspaceId]);
 
-  const existingReview = reviewResult.rows[0] || null;
+  const existingReview = reviewResult.rows[0] ?? null;
 
   return {
     context_type: 'review',
@@ -511,7 +511,7 @@ async function getRetroContext(projectId: string, workspaceId: string) {
     LIMIT 1
   `, [projectId, workspaceId]);
 
-  const existingRetro = retroResult.rows[0] || null;
+  const existingRetro = retroResult.rows[0] ?? null;
 
   // Calculate sprint outcomes
   const sprintOutcomes = sprintsResult.rows.map(sprint => {

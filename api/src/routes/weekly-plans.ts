@@ -1136,10 +1136,10 @@ router.get('/project-allocation-grid/:projectId', authMiddleware, async (req: Re
             week.number,
             {
               isAllocated: person.allocatedWeeks.has(week.number),
-              planId: planData?.id || null,
-              planStatus: calculateStatus(planData?.id || null, planData?.content, weekStartDate, 'plan'),
-              retroId: retroData?.id || null,
-              retroStatus: calculateStatus(retroData?.id || null, retroData?.content, weekStartDate, 'retro'),
+              planId: planData?.id ?? null,
+              planStatus: calculateStatus(planData?.id ?? null, planData?.content, weekStartDate, 'plan'),
+              retroId: retroData?.id ?? null,
+              retroStatus: calculateStatus(retroData?.id ?? null, retroData?.content, weekStartDate, 'retro'),
             },
           ];
         })

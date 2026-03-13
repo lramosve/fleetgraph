@@ -5,6 +5,6 @@ export interface User {
   name: string;
   isSuperAdmin: boolean;
   lastWorkspaceId: string | null;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;   // ISO 8601 timestamp
+  updatedAt: string;   // ISO 8601 timestamp
 }
