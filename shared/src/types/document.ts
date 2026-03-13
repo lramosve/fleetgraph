@@ -69,10 +69,8 @@ export type AccountabilityType =
 export type WeekStatus = 'active' | 'upcoming' | 'completed';
 
 // Properties interfaces for each document type
-// Index signatures ([key: string]: unknown) are required because typed document
-// variants (e.g., IssueDocument) extend Document whose `properties` field is
-// Record<string, unknown>. Without them, TypeScript errors on the extends clause.
-// To fully remove them, Document would need to become generic: Document<P>.
+// No index signatures - Document<P> generic parameter provides type safety
+// without requiring the escape hatch of [key: string]: unknown.
 export interface IssueProperties {
   state: IssueState;
   priority: IssuePriority;
@@ -88,7 +86,6 @@ export interface IssueProperties {
   accountability_target_id?: string | null;
   // Type of accountability task
   accountability_type?: AccountabilityType | null;
-  [key: string]: unknown;
 }
 
 export interface ProgramProperties {
@@ -99,7 +96,6 @@ export interface ProgramProperties {
   accountable_id?: string | null;  // A - Accountable (approver for hypotheses/reviews)
   readonly consulted_ids?: readonly string[];        // C - Consulted (provide input, stubbed for now)
   readonly informed_ids?: readonly string[];         // I - Informed (kept in loop, stubbed for now)
-  [key: string]: unknown;
 }
 
 // ICE score type (1-5 scale for prioritization)
@@ -130,7 +126,6 @@ export interface ProjectProperties {
   // Design review tracking
   has_design_review?: boolean | null;  // Whether design review has been completed
   design_review_notes?: string | null; // Optional notes from design review
-  [key: string]: unknown;
 }
 
 // Plan history entry for tracking plan changes over time
@@ -172,7 +167,6 @@ export interface WeekProperties {
     rated_by: string;      // User ID who rated
     rated_at: string;      // ISO 8601 timestamp
   } | null;
-  [key: string]: unknown;
 }
 
 export interface PersonProperties {
@@ -180,21 +174,19 @@ export interface PersonProperties {
   role?: string | null;
   capacity_hours?: number | null;
   reports_to?: string | null;
-  [key: string]: unknown;
 }
 
 // Wiki properties - optional maintainer
 export interface WikiProperties {
   maintainer_id?: string | null;
-  [key: string]: unknown;
 }
+
 // Weekly plan properties - per-person-per-week accountability document
 export interface WeeklyPlanProperties {
   person_id: string;       // REQUIRED - person document ID who wrote this plan
   project_id?: string;     // OPTIONAL - legacy field, no longer used for uniqueness
   week_number: number;     // REQUIRED - week number (same as sprint_number concept)
   submitted_at?: string | null;  // ISO timestamp when first saved with content
-  [key: string]: unknown;
 }
 
 // Weekly retro properties - per-person-per-week retrospective document
@@ -203,7 +195,6 @@ export interface WeeklyRetroProperties {
   project_id?: string;     // OPTIONAL - legacy field, no longer used for uniqueness
   week_number: number;     // REQUIRED - week number (same as sprint_number concept)
   submitted_at?: string | null;  // ISO timestamp when first saved with content
-  [key: string]: unknown;
 }
 
 // Standup properties - standalone daily entries per user
@@ -211,7 +202,6 @@ export interface StandupProperties {
   author_id: string;  // REQUIRED - who posted this standup (user ID)
   date?: string;      // OPTIONAL - ISO date string (e.g., '2026-02-24') for standalone standups
   submitted_at?: string | null;  // ISO timestamp when first saved with content
-  [key: string]: unknown;
 }
 
 // Weekly review properties - one per week, tracks plan validation
@@ -219,7 +209,6 @@ export interface WeeklyReviewProperties {
   sprint_id: string;          // REQUIRED - which sprint/week this reviews
   owner_id: string;           // REQUIRED - who is accountable for this review
   plan_validated: boolean | null;  // null = not yet determined
-  [key: string]: unknown;
 }
 
 // Union of all properties types
@@ -235,8 +224,10 @@ export type DocumentProperties =
   | StandupProperties
   | WeeklyReviewProperties;
 
-// Base document interface
-export interface Document {
+// Base document interface - generic P defaults to Record<string, unknown> for
+// untyped access. Typed variants (IssueDocument, ProjectDocument, etc.) narrow P
+// to the specific properties interface, enabling type-safe property access.
+export interface Document<P = Record<string, unknown>> {
   readonly id: string;
   readonly workspace_id: string;
   readonly document_type: DocumentType;
@@ -247,7 +238,7 @@ export interface Document {
   position: number;
   // Note: program_id, project_id, and sprint_id removed - use belongs_to array instead
   // These columns were dropped by migrations 027 and 029
-  properties: Record<string, unknown>;
+  properties: P;
   readonly ticket_number?: number | null;
   archived_at?: string | null;        // ISO 8601 timestamp (JSON-serialized from DB TIMESTAMPTZ)
   readonly created_at: string;        // ISO 8601 timestamp
@@ -268,55 +259,45 @@ export interface Document {
 }
 
 // Typed document variants for type safety in application code
-export interface WikiDocument extends Document {
+export interface WikiDocument extends Document<WikiProperties> {
   document_type: 'wiki';
-  properties: WikiProperties;
 }
 
-export interface IssueDocument extends Document {
+export interface IssueDocument extends Document<IssueProperties> {
   document_type: 'issue';
-  properties: IssueProperties;
   ticket_number: number;
 }
 
-export interface ProgramDocument extends Document {
+export interface ProgramDocument extends Document<ProgramProperties> {
   document_type: 'program';
-  properties: ProgramProperties;
 }
 
-export interface ProjectDocument extends Document {
+export interface ProjectDocument extends Document<ProjectProperties> {
   document_type: 'project';
-  properties: ProjectProperties;
 }
 
-export interface WeekDocument extends Document {
+export interface WeekDocument extends Document<WeekProperties> {
   document_type: 'sprint';
-  properties: WeekProperties;
 }
 
-export interface PersonDocument extends Document {
+export interface PersonDocument extends Document<PersonProperties> {
   document_type: 'person';
-  properties: PersonProperties;
 }
 
-export interface WeeklyPlanDocument extends Document {
+export interface WeeklyPlanDocument extends Document<WeeklyPlanProperties> {
   document_type: 'weekly_plan';
-  properties: WeeklyPlanProperties;
 }
 
-export interface WeeklyRetroDocument extends Document {
+export interface WeeklyRetroDocument extends Document<WeeklyRetroProperties> {
   document_type: 'weekly_retro';
-  properties: WeeklyRetroProperties;
 }
 
-export interface StandupDocument extends Document {
+export interface StandupDocument extends Document<StandupProperties> {
   document_type: 'standup';
-  properties: StandupProperties;
 }
 
-export interface WeeklyReviewDocument extends Document {
+export interface WeeklyReviewDocument extends Document<WeeklyReviewProperties> {
   document_type: 'weekly_review';
-  properties: WeeklyReviewProperties;
 }
 
 // Default project properties - ICE and owner start as null (not yet set)
