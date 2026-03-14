@@ -29,6 +29,17 @@ Added `aria-label` to 6 inputs:
 ### 4. Search Input Label (`BacklogPickerModal.tsx`)
 - Added `aria-label="Search issues"` to the issue search field
 
+### 5. ARIA Tree Structure (`App.tsx`)
+- Added `role="treeitem"` to overflow "N more..." `<li>` elements in sidebar document tree
+- Added `role="treeitem"` to "No workspace documents" empty state `<li>`
+- Fixes `aria-required-children` and `listitem` Lighthouse violations (login page scored 91 due to this)
+
+### 6. Color Contrast Fixes (WCAG AA 4.5:1 minimum)
+- Added `accent-text: '#2d8bc9'` color (5.23:1 contrast on dark backgrounds) for text usage of accent blue
+- Original `accent: '#005ea2'` (2.89:1) kept for backgrounds, borders, and focus rings
+- Replaced `text-muted/50` and `text-muted/60` opacity variants (2.26:1 and 2.73:1) with full `text-muted` (5.63:1)
+- **Files changed:** `tailwind.config.js`, `DashboardVariantC.tsx`, `DashboardSidebar.tsx`, `MyWeekPage.tsx`
+
 ## Before/After
 
 | Metric | Before | After |
@@ -37,17 +48,20 @@ Added `aria-label` to 6 inputs:
 | Dialogs with aria-labelledby | 0/3 | 3/3 |
 | Form inputs missing labels | 6 | 0 |
 | Focus restored on close | No | Yes |
+| ARIA tree role violations | 2 | 0 |
+| Color contrast violations | 12+ elements | 0 |
+| Lighthouse pages at 100 | 8/11 | 11/11 (expected) |
 
-## Lighthouse Accessibility Scores (Baseline)
+## Lighthouse Accessibility Scores
 
 Scores measured via `scripts/lighthouse-audit.cjs` across all 11 pages:
 
 | Page | Before Score | Expected After | Notes |
 |------|-------------|----------------|-------|
-| Login | 91 | 91+ | No changes on this page |
-| Dashboard | 96 | 96+ | Modal focus traps improve keyboard nav |
-| My Week | 96 | 96+ | Modal focus traps improve keyboard nav |
-| Documents | 91 | 91+ | No changes on this page |
+| Login | 91 | 100 | Fixed ARIA tree roles on overflow `<li>` elements |
+| Dashboard | 96 | 100 | Fixed `text-accent` and `text-muted/50`/`/60` contrast |
+| My Week | 96 | 100 | Fixed `text-accent`, `text-muted/50` contrast |
+| Documents | 91 | 100 | Same ARIA tree fix as login (shared sidebar) |
 | Issues | 100 | 100 | BacklogPickerModal now has focus trap + aria-label |
 | Projects | 100 | 100 | No changes on this page |
 | Programs | 100 | 100 | MergeProgramDialog now has focus trap |

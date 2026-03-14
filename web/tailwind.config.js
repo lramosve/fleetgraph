@@ -10,7 +10,8 @@ export default {
         foreground: '#f5f5f5',
         muted: '#8a8a8a', // Changed from #737373 (4.09:1) to #8a8a8a (5.1:1 contrast)
         border: '#262626',
-        accent: '#005ea2', // Logo blue
+        accent: '#005ea2', // Logo blue — use for backgrounds, borders, focus rings
+        'accent-text': '#2d8bc9', // Lighter blue for text on dark backgrounds (5.23:1 contrast)
         'accent-hover': '#0071bc', // Lighter blue for hover
       },
       fontFamily: {
