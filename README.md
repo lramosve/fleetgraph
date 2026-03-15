@@ -275,6 +275,15 @@ We welcome contributions. See [CONTRIBUTING.md](./CONTRIBUTING.md) for guideline
 
 ---
 
+## ShipShape Audit
+
+- [Audit Report](./docs/Audit%20Report.pdf) — Full codebase audit across 7 quality categories
+- [Improvement Documentation](./docs/improvements/) — Per-category improvement write-ups (type safety, bundle size, API response time, query efficiency, test coverage, error handling, accessibility)
+- [Discovery Write-up](./docs/discovery-writeup.md) — 3 key learnings from the codebase audit
+- [AI Cost Analysis](./docs/ai-cost-analysis.md) — Token usage and cost reflections
+
+---
+
 ## Documentation
 
 - [Application Architecture](./docs/application-architecture.md) — Tech stack and design decisions
