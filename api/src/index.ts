@@ -26,8 +26,8 @@ process.on('uncaughtException', (error: Error) => {
 });
 
 async function main() {
-  // Load secrets from SSM in production (before importing app)
-  if (process.env.NODE_ENV === 'production') {
+  // Load secrets from SSM in production (skip on Railway where env vars are set directly)
+  if (process.env.NODE_ENV === 'production' && !process.env.RAILWAY_ENVIRONMENT) {
     const { loadProductionSecrets } = await import('./config/ssm.js');
     await loadProductionSecrets();
   }

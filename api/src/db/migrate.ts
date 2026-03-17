@@ -19,7 +19,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 async function migrate() {
-  await loadProductionSecrets();
+  // Skip SSM on Railway where env vars are set directly
+  if (!process.env.RAILWAY_ENVIRONMENT) {
+    await loadProductionSecrets();
+  }
 
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {

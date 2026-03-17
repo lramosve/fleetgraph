@@ -30,6 +30,6 @@ ENV NODE_ENV=production
 ENV VITE_APP_ENV=production
 ENV PORT=80
 
-# Start the application (run migrations first to ensure schema exists)
+# Start the application (run migrations first, continue even if they fail on existing schema)
 WORKDIR /app/api
-CMD ["sh", "-c", "node dist/db/migrate.js && node dist/index.js"]
+CMD ["sh", "-c", "node dist/db/migrate.js || echo 'Migration warning (non-fatal)'; node dist/index.js"]
