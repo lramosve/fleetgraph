@@ -1,5 +1,5 @@
-# Use ECR Public Node.js image (Docker Hub is blocked in government environments)
-FROM public.ecr.aws/docker/library/node:20-slim
+# Use Node.js 20 slim image
+FROM node:20-slim
 
 # Set working directory
 WORKDIR /app

@@ -24,6 +24,8 @@ import { CommandPalette } from '@/components/CommandPalette';
 import { SessionTimeoutModal } from '@/components/SessionTimeoutModal';
 import { UploadNavigationWarning } from '@/components/UploadNavigationWarning';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
+import { FleetGraphChat, FleetGraphIcon } from '@/components/FleetGraphChat';
+import { useFleetGraphStatus } from '@/hooks/useFleetGraph';
 import { CacheCorruptionAlert } from '@/components/CacheCorruptionAlert';
 import { ContextMenu, ContextMenuItem, ContextMenuSeparator, ContextMenuSubmenu } from '@/components/ui/ContextMenu';
 import { useToast } from '@/components/ui/Toast';
@@ -56,6 +58,7 @@ export function AppLayout() {
   const [projectSetupWizardOpen, setProjectSetupWizardOpen] = useState(false);
   const [actionItemsModalOpen, setActionItemsModalOpen] = useState(false);
   const [actionItemsModalShownOnLoad, setActionItemsModalShownOnLoad] = useState(false);
+  const [fleetGraphOpen, setFleetGraphOpen] = useState(false);
 
   // Session timeout handling
   const handleSessionTimeout = useCallback(() => {
@@ -74,6 +77,10 @@ export function AppLayout() {
   // Check if user needs to post a standup today
   const { data: standupStatus } = useStandupStatusQuery();
   const standupDue = standupStatus?.due ?? false;
+
+  // FleetGraph agent status
+  const { data: fleetGraphStatus } = useFleetGraphStatus();
+  const fleetGraphPendingCount = fleetGraphStatus?.pendingCount ?? 0;
 
   // Check if user has pending action items (accountability tasks)
   const { data: actionItemsData } = useActionItemsQuery();
@@ -384,6 +391,17 @@ export function AppLayout() {
               onClick={() => handleModeClick('team')}
               showBadge={standupDue}
             />
+
+            {/* FleetGraph agent */}
+            <div className="mt-2 border-t border-border/50 pt-2">
+              <RailIcon
+                icon={<FleetGraphIcon className="h-4 w-4" />}
+                label="FleetGraph"
+                active={fleetGraphOpen}
+                onClick={() => setFleetGraphOpen(prev => !prev)}
+                showBadge={fleetGraphPendingCount > 0}
+              />
+            </div>
           </div>
 
           {/* Expand sidebar button (shows when collapsed) */}
@@ -576,6 +594,14 @@ export function AppLayout() {
       <ActionItemsModal
         open={actionItemsModalOpen}
         onClose={() => setActionItemsModalOpen(false)}
+      />
+
+      {/* FleetGraph Chat Panel */}
+      <FleetGraphChat
+        isOpen={fleetGraphOpen}
+        onClose={() => setFleetGraphOpen(false)}
+        documentId={currentDocumentId ?? undefined}
+        documentType={currentDocumentType ?? undefined}
       />
     </div>
     </SelectionPersistenceProvider>

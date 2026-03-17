@@ -55,6 +55,10 @@ async function main() {
     console.log(`API server running on http://localhost:${PORT}`);
     console.log(`CORS origin: ${CORS_ORIGIN}`);
   });
+
+  // Start FleetGraph agent (polling scheduler)
+  const { startFleetGraph } = await import('./fleetgraph/index.js');
+  startFleetGraph();
 }
 
 main().catch((err) => {
