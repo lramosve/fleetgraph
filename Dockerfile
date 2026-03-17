@@ -21,6 +21,7 @@ RUN pnpm install --frozen-lockfile --prod --ignore-scripts && pnpm store prune
 # Copy pre-built dist directories (built locally before deployment)
 COPY shared/dist/ ./shared/dist/
 COPY api/dist/ ./api/dist/
+COPY web/dist/ ./web/dist/
 
 # Expose port
 EXPOSE 80

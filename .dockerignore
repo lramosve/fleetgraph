@@ -24,9 +24,8 @@ docs
 __tests__
 coverage
 
-# Frontend build artifacts - source needed for local dev, but not prod API image
+# Frontend dependencies (dist is needed for production serving)
 web/node_modules
-web/dist
 
 # Logs
 *.log

@@ -1,4 +1,5 @@
 import express from 'express';
+import { join } from 'path';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
@@ -245,6 +246,18 @@ export function createApp(corsOrigin: string = 'http://localhost:5173'): express
   initializeCAIA().catch((err) => {
     console.warn('CAIA initialization failed:', err);
   });
+
+  // Serve frontend in production (Railway deploys API + web together)
+  if (process.env.NODE_ENV === 'production') {
+    const webDist = join(process.cwd(), '../web/dist');
+    app.use(express.static(webDist));
+    // SPA fallback: serve index.html for non-API routes
+    app.get('*', (req: Request, res: Response, next: NextFunction) => {
+      if (req.path.startsWith('/api/') || req.path === '/health') return next();
+      res.sendFile(join(webDist, 'index.html'));
+    });
+    console.log(`Serving frontend from: ${webDist}`);
+  }
 
   // Global error-handling middleware (must be registered AFTER all routes)
   // Without this, synchronous throws that bypass route-level try/catch
