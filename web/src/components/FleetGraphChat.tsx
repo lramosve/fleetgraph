@@ -183,7 +183,7 @@ export function FleetGraphChat({ isOpen, onClose, documentId, documentType }: Fl
                 )}>
                   {finding.severity}
                 </span>
-                <span className="text-xs text-muted">{finding.finding_type.replace('_', ' ')}</span>
+                <span className="text-xs text-muted">{formatFindingType(finding.finding_type)}</span>
               </div>
               <p className="text-sm">{finding.summary}</p>
               {finding.proposed_action && (
@@ -211,6 +211,17 @@ export function FleetGraphChat({ isOpen, onClose, documentId, documentType }: Fl
       )}
     </div>
   );
+}
+
+const FINDING_TYPE_LABELS: Record<string, string> = {
+  stale_issue: 'Stale Issue',
+  missing_standup: 'Missing Standup',
+  scope_creep: 'Scope Creep',
+  missing_ritual: 'Missing Ritual',
+};
+
+function formatFindingType(type: string): string {
+  return FINDING_TYPE_LABELS[type] ?? type.replace(/_/g, ' ');
 }
 
 function FleetGraphIcon({ className }: { className?: string }) {

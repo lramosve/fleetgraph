@@ -7,6 +7,15 @@ import type { Finding } from '../state.js';
  * Runs in parallel with other detection nodes in the proactive graph.
  */
 export async function detectScopeCreep(state: FleetGraphStateType): Promise<Partial<FleetGraphStateType>> {
+  try {
+    return await _detectScopeCreep(state);
+  } catch (err) {
+    console.error('[FleetGraph] detect_scope_creep error:', err);
+    return { findings: [] };
+  }
+}
+
+async function _detectScopeCreep(state: FleetGraphStateType): Promise<Partial<FleetGraphStateType>> {
   const { workspaceId } = state;
 
   // Get workspace sprint start date and compute current week

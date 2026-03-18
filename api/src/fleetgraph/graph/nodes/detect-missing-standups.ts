@@ -7,6 +7,15 @@ import type { Finding } from '../state.js';
  * Runs in parallel with detect-stale-issues in the proactive graph.
  */
 export async function detectMissingStandups(state: FleetGraphStateType): Promise<Partial<FleetGraphStateType>> {
+  try {
+    return await _detectMissingStandups(state);
+  } catch (err) {
+    console.error('[FleetGraph] detect_missing_standups error:', err);
+    return { findings: [] };
+  }
+}
+
+async function _detectMissingStandups(state: FleetGraphStateType): Promise<Partial<FleetGraphStateType>> {
   const { workspaceId } = state;
 
   // Fetch people and their recent standups in parallel

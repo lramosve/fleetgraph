@@ -7,6 +7,15 @@ import type { Finding } from '../state.js';
  * Runs in parallel with other detection nodes in the proactive graph.
  */
 export async function detectMissingRituals(state: FleetGraphStateType): Promise<Partial<FleetGraphStateType>> {
+  try {
+    return await _detectMissingRituals(state);
+  } catch (err) {
+    console.error('[FleetGraph] detect_missing_rituals error:', err);
+    return { findings: [] };
+  }
+}
+
+async function _detectMissingRituals(state: FleetGraphStateType): Promise<Partial<FleetGraphStateType>> {
   const { workspaceId } = state;
 
   // Get workspace sprint start date
