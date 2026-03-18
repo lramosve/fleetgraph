@@ -1,0 +1,14 @@
+# Railway upload ignore - overrides .gitignore
+# MUST include dist/ directories that Docker needs
+
+node_modules
+**/node_modules
+.git
+.env*
+*.log
+.DS_Store
+Thumbs.db
+coverage
+.vscode
+.idea
+PRESEARCH.docx
