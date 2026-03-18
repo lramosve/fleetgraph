@@ -70,7 +70,9 @@ Output ONLY valid JSON, no markdown fences.`
   let classifications: Array<{ id: string; severity: string; summary: string; proposed_action: string }> = [];
   try {
     const content = typeof response.content === 'string' ? response.content : '';
-    classifications = JSON.parse(content);
+    const parsed = JSON.parse(content);
+    if (!Array.isArray(parsed)) throw new Error('Expected array');
+    classifications = parsed;
   } catch {
     // Fallback: classify by days
     classifications = candidates.map(c => ({

@@ -23,35 +23,67 @@ FleetGraph is a **project intelligence agent** for Ship that monitors project st
 
 ## Graph Architecture
 
-### Proactive Graph (Stale Issue Detection)
+### Proactive Graph (Parallel Detection)
 
 ```mermaid
 graph TD
     START([Start]) --> fetch_activity
     fetch_activity{Has Changes?}
     fetch_activity -->|No changes| END_CLEAN([END - Clean Run])
-    fetch_activity -->|Changes detected| fetch_issues
-    fetch_issues --> detect_stale
-    detect_stale{Findings?}
-    detect_stale -->|No findings| END_NO_FINDINGS([END - No Issues])
-    detect_stale -->|Findings detected| propose_action
+    fetch_activity -->|Changes detected| detect_stale_issues
+    fetch_activity -->|Changes detected| detect_missing_standups
+    fetch_activity -->|Changes detected| detect_scope_creep
+    fetch_activity -->|Changes detected| detect_missing_rituals
+    detect_stale_issues --> propose_action
+    detect_missing_standups --> propose_action
+    detect_scope_creep --> propose_action
+    detect_missing_rituals --> propose_action
     propose_action --> END_SAVED([END - Findings Saved])
+
+    style detect_stale_issues fill:#e1f5fe
+    style detect_missing_standups fill:#e1f5fe
+    style detect_scope_creep fill:#e1f5fe
+    style detect_missing_rituals fill:#e1f5fe
 ```
 
-**Path A** - Findings detected: `fetch_activity → fetch_issues → detect_stale → propose_action → END`
+**Parallel fan-out:** After `fetch_activity` detects changes, four detection nodes run **concurrently**:
+- `detect_stale_issues` — In-progress issues with no activity for 48+ hours (LLM classification)
+- `detect_missing_standups` — Team members without recent standup posts
+- `detect_scope_creep` — Issues added to the current week after plan submission
+- `detect_missing_rituals` — Weeks without plans or retrospectives
+
+All four write to the shared `findings` array via a merge reducer. `propose_action` waits for all to complete (fan-in), then persists findings with deduplication.
+
+**Path A** - Findings detected: `fetch_activity → [detect_stale_issues ‖ detect_missing_standups ‖ detect_scope_creep ‖ detect_missing_rituals] → propose_action → END`
 **Path C** - Clean run (no changes): `fetch_activity → END`
 
-### On-Demand Graph (Chat)
+### On-Demand Graph (Parallel Context Fetching)
 
 ```mermaid
 graph TD
-    START([Start]) --> fetch_context
-    fetch_context --> answer_query
+    START([Start]) --> fetch_document
+    START --> fetch_workspace_stats
+    START --> fetch_pending_findings
+    fetch_document --> merge_context
+    fetch_workspace_stats --> merge_context
+    fetch_pending_findings --> merge_context
+    merge_context --> answer_query
     answer_query --> format_response
     format_response --> END([END])
+
+    style fetch_document fill:#e1f5fe
+    style fetch_workspace_stats fill:#e1f5fe
+    style fetch_pending_findings fill:#e1f5fe
 ```
 
-**Path B** - On-demand: `fetch_context → answer_query → format_response → END`
+**Parallel fan-out:** Three context-fetch nodes run **concurrently** from start:
+- `fetch_document` — Loads the current document + history (uses `Promise.all` internally)
+- `fetch_workspace_stats` — Workspace-level issue counts
+- `fetch_pending_findings` — Active FleetGraph findings
+
+`merge_context` combines their outputs, then the LLM answers the user's question.
+
+**Path B** - On-demand: `[fetch_document ‖ fetch_workspace_stats ‖ fetch_pending_findings] → merge_context → answer_query → format_response → END`
 
 ### Human-in-the-Loop Gate
 
@@ -151,7 +183,29 @@ See [PRESEARCH.md](./PRESEARCH.md) for detailed rationale on:
 
 ## Test Cases
 
-<!-- TODO: Add test cases for MVP -->
+### Unit Tests
+
+| Test | Node | Validates |
+|------|------|-----------|
+| Stale detection with LLM fallback | `detect-stale-issues` | Falls back to rule-based classification when LLM returns invalid JSON |
+| Stale detection skips fresh issues | `detect-stale-issues` | Issues updated <48h ago produce no findings |
+| Missing standups detects absence | `detect-missing-standups` | People without standups in 48h generate findings |
+| Scope creep counts post-plan issues | `detect-scope-creep` | Issues created after plan submission are flagged |
+| Missing rituals checks past weeks | `detect-missing-rituals` | Past weeks without retros generate high-severity findings |
+| Propose action deduplicates | `propose-action` | Duplicate findings within 24h are not re-inserted |
+| Propose action respects suppression | `propose-action` | Dismissed findings within suppression window are skipped |
+| Merge context combines outputs | `merge-context` | Empty fields are filtered, non-empty fields joined |
+
+### Integration Tests
+
+| Test | Graph | Validates |
+|------|-------|-----------|
+| Proactive: no changes → early exit | Proactive | `hasChanges=false` short-circuits to END without running detection |
+| Proactive: parallel detection fan-out | Proactive | All 4 detection nodes execute, findings merge correctly |
+| On-demand: parallel context fetch | On-demand | 3 fetch nodes run, merge, LLM answers with combined context |
+| On-demand: no document context | On-demand | Works correctly when `documentId` is null |
+| Findings approval flow | REST API | Approve → execute action → status updated |
+| Findings dismissal flow | REST API | Dismiss → suppression active for 7 days |
 
 ---
 
