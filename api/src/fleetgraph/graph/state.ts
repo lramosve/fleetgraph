@@ -1,5 +1,15 @@
 import { Annotation } from '@langchain/langgraph';
 
+export interface Finding {
+  finding_type: string;
+  severity: string;
+  document_id: string;
+  document_type: string;
+  summary: string;
+  details: Record<string, unknown>;
+  proposed_action: string;
+}
+
 export const FleetGraphState = Annotation.Root({
   // Mode
   mode: Annotation<'proactive' | 'on_demand'>({ reducer: (_, b) => b, default: () => 'proactive' }),
@@ -24,17 +34,9 @@ export const FleetGraphState = Annotation.Root({
     default: () => [],
   }),
 
-  // Findings
-  findings: Annotation<Array<{
-    finding_type: string;
-    severity: string;
-    document_id: string;
-    document_type: string;
-    summary: string;
-    details: Record<string, unknown>;
-    proposed_action: string;
-  }>>({
-    reducer: (_, b) => b,
+  // Findings — merge reducer so parallel detection branches combine results
+  findings: Annotation<Finding[]>({
+    reducer: (a, b) => [...a, ...b],
     default: () => [],
   }),
 
@@ -43,6 +45,13 @@ export const FleetGraphState = Annotation.Root({
   userId: Annotation<string>({ reducer: (_, b) => b, default: () => '' }),
   documentId: Annotation<string | null>({ reducer: (_, b) => b, default: () => null }),
   documentType: Annotation<string | null>({ reducer: (_, b) => b, default: () => null }),
+
+  // Parallel context-fetch outputs (on-demand graph)
+  documentContext: Annotation<string>({ reducer: (_, b) => b, default: () => '' }),
+  workspaceStats: Annotation<string>({ reducer: (_, b) => b, default: () => '' }),
+  pendingFindingsContext: Annotation<string>({ reducer: (_, b) => b, default: () => '' }),
+
+  // Combined context + response
   contextData: Annotation<string>({ reducer: (_, b) => b, default: () => '' }),
   response: Annotation<string>({ reducer: (_, b) => b, default: () => '' }),
 });

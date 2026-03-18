@@ -1,39 +1,46 @@
 import { StateGraph, END } from '@langchain/langgraph';
 import { FleetGraphState } from './state.js';
 import { fetchActivity } from './nodes/fetch-activity.js';
-import { fetchIssues } from './nodes/fetch-issues.js';
-import { detectStale } from './nodes/detect-stale.js';
+import { detectStaleIssues } from './nodes/detect-stale-issues.js';
+import { detectMissingStandups } from './nodes/detect-missing-standups.js';
 import { proposeAction } from './nodes/propose-action.js';
 
 /**
- * Proactive graph: detects stale issues on a schedule.
+ * Proactive graph: detects project issues on a schedule.
  *
- * Path A (findings detected):
- *   fetch_activity → fetch_issues → detect_stale → propose_action → END
+ * Topology (with parallel fan-out):
  *
- * Path C (clean run, no changes):
- *   fetch_activity → END
+ *   fetch_activity ──► [conditional: hasChanges?]
+ *                       │
+ *                       ├─ no  ──► END
+ *                       │
+ *                       └─ yes ──► ┌─ detect_stale_issues ────┐
+ *                                  │                           ├──► propose_action ──► END
+ *                                  └─ detect_missing_standups ─┘
+ *
+ * detect_stale_issues and detect_missing_standups run in PARALLEL.
+ * Both write to the shared `findings` array (merge reducer).
+ * propose_action waits for both to complete (fan-in).
  */
 export function buildProactiveGraph() {
   const graph = new StateGraph(FleetGraphState)
     .addNode('fetch_activity', fetchActivity)
-    .addNode('fetch_issues', fetchIssues)
-    .addNode('detect_stale', detectStale)
+    .addNode('detect_stale_issues', detectStaleIssues)
+    .addNode('detect_missing_standups', detectMissingStandups)
     .addNode('propose_action', proposeAction)
     .addEdge('__start__', 'fetch_activity')
+    // Parallel fan-out: return array of node names for concurrent execution
     .addConditionalEdges('fetch_activity', (state) => {
-      return state.hasChanges ? 'fetch_issues' : '__end__';
+      if (!state.hasChanges) return '__end__';
+      return ['detect_stale_issues', 'detect_missing_standups'];
     }, {
-      fetch_issues: 'fetch_issues',
+      detect_stale_issues: 'detect_stale_issues',
+      detect_missing_standups: 'detect_missing_standups',
       __end__: END,
     })
-    .addEdge('fetch_issues', 'detect_stale')
-    .addConditionalEdges('detect_stale', (state) => {
-      return state.findings.length > 0 ? 'propose_action' : '__end__';
-    }, {
-      propose_action: 'propose_action',
-      __end__: END,
-    })
+    // Fan-in: both detection nodes converge on propose_action
+    .addEdge('detect_stale_issues', 'propose_action')
+    .addEdge('detect_missing_standups', 'propose_action')
     .addEdge('propose_action', END);
 
   return graph.compile();

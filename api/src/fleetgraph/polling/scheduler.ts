@@ -28,28 +28,25 @@ async function runProactiveScan(workspaceId: string): Promise<void> {
 
 async function fastPoll(): Promise<void> {
   const workspaceIds = await getWorkspaceIds();
-  for (const wsId of workspaceIds) {
-    await runProactiveScan(wsId);
-  }
+  // Scan all workspaces in parallel
+  await Promise.all(workspaceIds.map(wsId => runProactiveScan(wsId)));
 }
 
 async function slowPoll(): Promise<void> {
   // Slow poll: run full scan for absence-based conditions
-  // For MVP, this triggers the same proactive graph but we force hasChanges=true
+  // Force hasChanges=true to bypass the hash check
   const workspaceIds = await getWorkspaceIds();
-  for (const wsId of workspaceIds) {
-    try {
-      const graph = buildProactiveGraph();
-      // Override hasChanges to force deep scan on slow poll
-      await graph.invoke({
-        mode: 'proactive',
-        workspaceId: wsId,
-        hasChanges: true,
-      });
-    } catch (err) {
+  // Scan all workspaces in parallel
+  await Promise.all(workspaceIds.map(wsId => {
+    const graph = buildProactiveGraph();
+    return graph.invoke({
+      mode: 'proactive',
+      workspaceId: wsId,
+      hasChanges: true,
+    }).catch(err => {
       console.error(`[FleetGraph] Slow poll error for workspace ${wsId}:`, err);
-    }
-  }
+    });
+  }));
 }
 
 export function startPolling(): void {
