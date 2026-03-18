@@ -163,8 +163,11 @@ Three new tables (migration 039):
 
 ## LangSmith Trace Links
 
-- **Trace 1 (Path A - Proactive, findings detected):** https://smith.langchain.com/public/44f1ddc8-783b-4d62-857e-ecece7db05e1/r
-- **Trace 2 (Path B - On-demand chat):** https://smith.langchain.com/public/ab025179-1922-409d-81ed-0e311d1adb8a/r
+- **Trace 1 (Path A - Proactive, 4-way parallel detection fan-out):** https://smith.langchain.com/public/9a017d99-81fa-42d6-8309-3b2804f38f21/r
+  - Shows: `fetch_activity → [detect_stale_issues ‖ detect_missing_standups ‖ detect_scope_creep ‖ detect_missing_rituals] → propose_action`
+  - All 4 detection nodes start within 3ms of each other
+- **Trace 2 (Path B - On-demand, 3-way parallel context fetch):** https://smith.langchain.com/public/24b2bb4e-9409-4379-8601-c8e32b057f7c/r
+  - Shows: `[fetch_document ‖ fetch_workspace_stats ‖ fetch_pending_findings] → merge_context → answer_query → format_response`
 
 LangSmith project dashboard: https://smith.langchain.com/o/9ec225d0-ceaf-4bba-a026-02438fa14772/projects/p/2763fbc4-bba2-47b1-8d6f-05a8f956d446
 
