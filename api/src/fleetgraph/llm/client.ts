@@ -20,6 +20,7 @@ function createProvider(): BaseChatModel {
         model: process.env.FLEETGRAPH_LLM_MODEL || 'claude-sonnet-4-20250514',
         temperature: 0,
         maxTokens: 1024,
+        maxRetries: 3,
         anthropicApiKey: process.env.ANTHROPIC_API_KEY,
       });
     // Future: case 'openai': return new ChatOpenAI({ ... });

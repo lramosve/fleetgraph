@@ -6,6 +6,7 @@ let slowPollInterval: ReturnType<typeof setInterval> | null = null;
 
 const FAST_POLL_MS = 3 * 60 * 1000;  // 3 minutes
 const SLOW_POLL_MS = 30 * 60 * 1000; // 30 minutes
+const GRAPH_TIMEOUT_MS = 30 * 1000;  // 30 second execution timeout
 
 async function getWorkspaceIds(): Promise<string[]> {
   const result = await pool.query(
@@ -17,12 +18,17 @@ async function getWorkspaceIds(): Promise<string[]> {
 async function runProactiveScan(workspaceId: string): Promise<void> {
   try {
     const graph = buildProactiveGraph();
-    await graph.invoke({
-      mode: 'proactive',
-      workspaceId,
-    });
+    await graph.invoke(
+      { mode: 'proactive', workspaceId },
+      { signal: AbortSignal.timeout(GRAPH_TIMEOUT_MS) },
+    );
   } catch (err) {
-    console.error(`[FleetGraph] Proactive scan error for workspace ${workspaceId}:`, err);
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('abort') || msg.includes('timeout')) {
+      console.error(`[FleetGraph] Proactive scan timed out for workspace ${workspaceId} (>${GRAPH_TIMEOUT_MS}ms)`);
+    } else {
+      console.error(`[FleetGraph] Proactive scan error for workspace ${workspaceId}:`, err);
+    }
   }
 }
 
@@ -39,11 +45,10 @@ async function slowPoll(): Promise<void> {
   // Scan all workspaces in parallel
   await Promise.all(workspaceIds.map(wsId => {
     const graph = buildProactiveGraph();
-    return graph.invoke({
-      mode: 'proactive',
-      workspaceId: wsId,
-      hasChanges: true,
-    }).catch(err => {
+    return graph.invoke(
+      { mode: 'proactive', workspaceId: wsId, hasChanges: true },
+      { signal: AbortSignal.timeout(GRAPH_TIMEOUT_MS) },
+    ).catch(err => {
       console.error(`[FleetGraph] Slow poll error for workspace ${wsId}:`, err);
     });
   }));

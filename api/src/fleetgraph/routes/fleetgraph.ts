@@ -37,16 +37,19 @@ router.post('/chat', authMiddleware, async (req: Request, res: Response) => {
       [workspaceId, userId, message, documentId || null, documentType || null]
     );
 
-    // Run on-demand graph
+    // Run on-demand graph (30s timeout)
     const graph = buildOnDemandGraph();
-    const result = await graph.invoke({
-      mode: 'on_demand',
-      workspaceId,
-      userId,
-      userMessage: message,
-      documentId: documentId || null,
-      documentType: documentType || null,
-    });
+    const result = await graph.invoke(
+      {
+        mode: 'on_demand',
+        workspaceId,
+        userId,
+        userMessage: message,
+        documentId: documentId || null,
+        documentType: documentType || null,
+      },
+      { signal: AbortSignal.timeout(30_000) },
+    );
 
     // Save assistant response
     await pool.query(
