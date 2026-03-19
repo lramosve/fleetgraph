@@ -186,4 +186,66 @@ router.get('/status', authMiddleware, async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * POST /api/fleetgraph/seed-demo
+ * Insert sample findings for demo purposes (admin only)
+ */
+router.post('/seed-demo', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const workspaceId = req.workspaceId!;
+
+    const demoFindings = [
+      {
+        type: 'scope_creep', severity: 'medium',
+        doc_id: 'f0000000-0000-0000-0000-000000000003', doc_type: 'sprint',
+        summary: '3 issue(s) added to "Week 12 (Mar 16-22)" after plan was submitted.',
+        details: { week_title: 'Week 12 (Mar 16-22)', plan_submitted_at: '2026-03-16T09:00:00Z', added_issues: [{ title: 'Fix notification delivery' }, { title: 'Fix date picker timezone' }, { title: 'Improve search performance' }] },
+        action: 'Review the 3 new issue(s) and decide whether to defer or accept the scope increase.',
+      },
+      {
+        type: 'missing_ritual', severity: 'high',
+        doc_id: 'f0000000-0000-0000-0000-000000000002', doc_type: 'sprint',
+        summary: 'Week "Week 11 (Mar 9-15)" (Sprint 11) was completed without a retro.',
+        details: { week_title: 'Week 11 (Mar 9-15)', sprint_number: 11, ritual_type: 'weekly_retro' },
+        action: 'Follow up with the week owner about writing a retrospective for "Week 11 (Mar 9-15)".',
+      },
+      {
+        type: 'missing_ritual', severity: 'medium',
+        doc_id: 'f0000000-0000-0000-0000-000000000003', doc_type: 'sprint',
+        summary: 'Week "Week 12 (Mar 16-22)" (Sprint 12) has no weekly plan.',
+        details: { week_title: 'Week 12 (Mar 16-22)', sprint_number: 12, ritual_type: 'weekly_plan' },
+        action: 'Remind the week owner to submit a weekly plan for "Week 12 (Mar 16-22)".',
+      },
+      {
+        type: 'missing_standup', severity: 'medium',
+        doc_id: '403f315c-a908-438b-921b-ea4ab4f7da4e', doc_type: 'person',
+        summary: 'Alex Rivera has not posted a standup in the last 48 hours.',
+        details: { person_name: 'Alex Rivera' },
+        action: 'Send a reminder to post a standup update.',
+      },
+    ];
+
+    let inserted = 0;
+    for (const f of demoFindings) {
+      const exists = await pool.query(
+        `SELECT id FROM fleetgraph_findings WHERE workspace_id = $1 AND finding_type = $2 AND document_id = $3 AND status = 'pending'`,
+        [workspaceId, f.type, f.doc_id]
+      );
+      if (exists.rows.length > 0) continue;
+
+      await pool.query(
+        `INSERT INTO fleetgraph_findings (workspace_id, finding_type, severity, document_id, document_type, summary, details, proposed_action, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')`,
+        [workspaceId, f.type, f.severity, f.doc_id, f.doc_type, f.summary, JSON.stringify(f.details), f.action]
+      );
+      inserted++;
+    }
+
+    res.json({ inserted, total: demoFindings.length });
+  } catch (err) {
+    console.error('[FleetGraph] Seed demo error:', err);
+    res.status(500).json({ error: 'Failed to seed demo findings' });
+  }
+});
+
 export default router;
