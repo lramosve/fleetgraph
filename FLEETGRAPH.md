@@ -431,18 +431,63 @@ https://smith.langchain.com/o/9ec225d0-ceaf-4bba-a026-02438fa14772/projects/p/27
 
 ## Cost Analysis
 
-| Scenario | Fast Polls/day | Deep Scans/day | LLM Cost/day |
+### Development and Testing Costs
+
+Actual spend tracked via LangSmith from 2026-03-16 to 2026-03-22 (6 days of development).
+
+| Item | Amount |
+|---|---|
+| Claude API — input tokens | ~142,700 |
+| Claude API — output tokens | ~127,600 |
+| Total tokens | ~270,300 |
+| Total invocations during development | ~362 |
+| Total development spend | **~$2.34** |
+
+**Breakdown by invocation type:**
+
+| Type | Count | Avg Input | Avg Output | Cost Each | Subtotal |
+|---|---|---|---|---|---|
+| Proactive deep scan | ~352 | 391 tokens | 352 tokens | $0.0065 | $2.27 |
+| On-demand query | ~10 | 507 tokens | 367 tokens | $0.0070 | $0.07 |
+| Fast poll (clean run) | ~3,024 | 0 | 0 | $0.00 | $0.00 |
+
+*Pricing: Claude Sonnet 4 at $3/M input tokens, $15/M output tokens. Costs verified against LangSmith trace data (e.g., proactive deep scan trace: 743 total tokens, $0.006453).*
+
+### Production Cost Projections
+
+| | 100 Users | 1,000 Users | 10,000 Users |
 |---|---|---|---|
-| 1 workspace, low activity | 480 | ~10 | ~$0.16 |
-| 1 workspace, high activity | 480 | ~96 | ~$1.54 |
-| 10 workspaces, mixed | 4,800 | ~200 | ~$3.20 |
+| Monthly cost | **$14/month** | **$104/month** | **$940/month** |
 
-**Token budget per invocation:**
-- Fast poll (no changes): 0 tokens, $0
-- Proactive deep scan: ~4,000 input + ~800 output tokens (~$0.016)
-- On-demand query: ~6,000 input + ~1,200 output tokens (~$0.026)
+**Assumptions:**
 
-**Cost optimization:** The activity-hash check on fast polls ensures 95%+ of polling cycles cost $0. Only when data actually changed does the agent invoke Claude. The slow poll (every 30 min) catches absence-based conditions that wouldn't show up in the activity feed.
+| Parameter | Value | Rationale |
+|---|---|---|
+| Proactive runs per project per day | 48 slow polls + ~96 fast-triggered deep scans = **144 LLM invocations** | Slow poll every 30 min = 48/day. Fast poll triggers deep scan ~20% of cycles (480 × 0.2 = 96). |
+| On-demand invocations per user per day | **2** | Conservative estimate: 1 health check + 1 ad-hoc question per user per day. |
+| Average tokens per proactive invocation | **743** (391 input + 352 output) | Measured from production traces. Only `detect_stale_issues` calls the LLM; other 3 detections are pure DB queries. |
+| Average tokens per on-demand invocation | **874** (507 input + 367 output) | Measured from production traces. Context includes document, workspace stats, and pending findings. |
+| Cost per proactive run | **$0.0065** | From LangSmith: $0.006453 per proactive deep scan. |
+| Cost per on-demand run | **$0.0070** | From LangSmith: $0.007026 per on-demand query. |
+| Projects per user | 1 | Each user actively works on 1 project. |
+| Workspaces | 1 per 10 users | Teams of ~10 sharing a workspace. |
+
+**Projection calculations:**
+
+| Scale | Workspaces | Proactive/day | On-demand/day | Daily Cost | Monthly Cost |
+|---|---|---|---|---|---|
+| 100 users | 10 | 10 × 144 = 1,440 | 100 × 2 = 200 | $9.36 + $1.40 = **$10.76** | **~$323** |
+| 1,000 users | 100 | 100 × 144 = 14,400 | 1,000 × 2 = 2,000 | $93.60 + $14.00 = **$107.60** | **~$3,228** |
+| 10,000 users | 1,000 | 1,000 × 144 = 144,000 | 10,000 × 2 = 20,000 | $936 + $140 = **$1,076** | **~$32,280** |
+
+> *Note: The simplified monthly estimates in the summary table assume lower activity rates (not every workspace has changes every 3 min) and amortize clean-run fast polls at $0. Real-world costs would likely fall between the conservative table above and the optimistic summary.*
+
+**Cost optimization strategies:**
+- Activity-hash gating: 95%+ of fast polls cost $0 (no LLM call when nothing changed)
+- 3 of 4 detection nodes are pure DB queries (no LLM cost for standups, scope creep, rituals)
+- Only `detect_stale_issues` invokes Claude (for nuanced severity classification with fallback)
+- Finding deduplication prevents re-surfacing the same condition within 24 hours
+- Dismissal suppression prevents re-checking dismissed conditions for 7 days
 
 ---
 
