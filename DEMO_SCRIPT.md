@@ -41,13 +41,13 @@
 
 > "Let's look under the hood. This is a LangSmith trace of the actual graph run that produced those findings. The proactive graph is built with LangGraph JS."
 >
-> "It starts with **fetch_activity** — a single database query that checks if anything changed since the last poll. If nothing changed, the graph ends immediately, costing zero. But in this run, changes were detected."
+> "It starts with **fetch_activity** — a call to the Ship REST API that fetches current issues and checks if anything changed since the last poll via a hash comparison. If nothing changed, the graph ends immediately, costing zero. But in this run, changes were detected."
 
 **Action:** Point to the 4 parallel detection nodes in the trace timeline.
 
 > "Here's the parallel fan-out. After fetch_activity, the graph branches into **four detection nodes** — all starting at the exact same millisecond: detect_stale_issues, detect_missing_standups, detect_scope_creep, and detect_missing_rituals. LangGraph runs them concurrently."
 >
-> "Three of these are pure database queries — they finish in under 30 milliseconds. But **detect_stale_issues** is different. It sends the list of stale issues to Claude and asks it to classify severity and write a human-readable summary. That's the ChatAnthropic call you see here — it takes about 7 seconds."
+> "Three of these are pure REST API calls — they fetch data from Ship's API and finish in under 70 milliseconds. But **detect_stale_issues** is different. After fetching in-progress issues from the API, it sends the list to Claude and asks it to classify severity and write a human-readable summary. That's the ChatAnthropic call you see here — it takes about 7 seconds."
 
 **Action:** Point to propose_action at the end of the trace.
 
@@ -57,7 +57,7 @@
 
 **Action:** Briefly show the clean run trace: https://smith.langchain.com/public/27b43c25-c5fa-4dc7-854a-22cbe482eb67/r
 
-> "...you see fetch_activity checks the hash, nothing changed, and it exits in 22 milliseconds. No LLM, no cost. This is 95% of fast polls."
+> "...you see fetch_activity calls the issues API, compares the hash, nothing changed, and it exits in under 100 milliseconds. No LLM, no cost. This is 95% of fast polls."
 
 ---
 

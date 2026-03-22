@@ -378,7 +378,7 @@ Ship is deployed to Railway as a Docker container: https://fleetgraph-production
 
 **How does it authenticate with Ship without a user session?**
 
-The proactive agent runs **in-process** with the Ship API — it queries PostgreSQL directly using the shared `pool` from `db/client.ts`. No HTTP API calls or authentication tokens are needed for proactive scans.
+The proactive agent runs **in-process** with the Ship API. ~~It queries PostgreSQL directly using the shared `pool` from `db/client.ts`.~~ **Updated during implementation:** To comply with the PRD constraint ("The Ship REST API is your data source — no direct database access"), the agent reads all Ship data via the REST API (`ship-client.ts`) authenticated with a `FLEETGRAPH_API_TOKEN` (Bearer token). FleetGraph's own tables (`fleetgraph_findings`, `fleetgraph_poll_state`) are accessed via direct DB since they are not Ship data.
 
 For on-demand mode, the user's existing session cookie authenticates their chat requests through the standard `authMiddleware`.
 
