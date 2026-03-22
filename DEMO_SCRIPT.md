@@ -37,7 +37,7 @@
 
 ## 1:45–3:00 — Show the Graph and Trace
 
-**Action:** Switch to the LangSmith proactive trace tab: https://smith.langchain.com/public/e09239db-e51d-4210-91eb-4975c67a3f90/r
+**Action:** Switch to the LangSmith proactive trace tab: https://smith.langchain.com/public/679b479b-e1f1-41f9-b0ad-e95899bbc5c8/r
 
 > "Let's look under the hood. This is a LangSmith trace of the actual graph run that produced those findings. The proactive graph is built with LangGraph JS."
 >
@@ -55,7 +55,7 @@
 >
 > "The whole run: 6.9 seconds. One LLM call. Four detection types. And if I switch to a clean run trace..."
 
-**Action:** Briefly show the clean run trace: https://smith.langchain.com/public/c9b10ff8-7b48-4e54-bd8a-3e76a67af893/r
+**Action:** Briefly show the clean run trace: https://smith.langchain.com/public/27b43c25-c5fa-4dc7-854a-22cbe482eb67/r
 
 > "...you see fetch_activity checks the hash, nothing changed, and it exits in 22 milliseconds. No LLM, no cost. This is 95% of fast polls."
 
@@ -100,8 +100,8 @@
 ## Pre-Demo Setup
 
 - [ ] Open production URL and log in: https://fleetgraph-production-614c.up.railway.app/
-- [ ] Open proactive trace in a tab: https://smith.langchain.com/public/e09239db-e51d-4210-91eb-4975c67a3f90/r
-- [ ] Open clean run trace in a tab: https://smith.langchain.com/public/c9b10ff8-7b48-4e54-bd8a-3e76a67af893/r
+- [ ] Open proactive trace in a tab: https://smith.langchain.com/public/679b479b-e1f1-41f9-b0ad-e95899bbc5c8/r
+- [ ] Open clean run trace in a tab: https://smith.langchain.com/public/27b43c25-c5fa-4dc7-854a-22cbe482eb67/r
 - [ ] Verify Findings tab has entries across multiple types (if empty, POST to `/api/fleetgraph/seed-demo`)
 - [ ] Practice the approve/dismiss flow once so you know which finding to click
 - [ ] Start recording

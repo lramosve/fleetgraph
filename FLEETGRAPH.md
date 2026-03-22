@@ -116,7 +116,7 @@ graph TD
 
 **Test case:** `detect-stale-issues.test.ts` — "uses LLM fallback when response is invalid JSON" sends invalid JSON from mock LLM, verifies rule-based classification produces correct severity.
 
-**Trace:** [Proactive deep scan trace](https://smith.langchain.com/public/e09239db-e51d-4210-91eb-4975c67a3f90/r) — `detect_stale_issues` node starts at 13:19:34.542, calls `ChatAnthropic` for classification (13:19:34.565–13:19:41.343), produces findings passed to `propose_action`.
+**Trace:** [Proactive deep scan trace](https://smith.langchain.com/public/679b479b-e1f1-41f9-b0ad-e95899bbc5c8/r) — `detect_stale_issues` fetches issues via `GET /api/issues?state=in_progress`, then calls `ChatAnthropic` for severity classification, produces findings passed to `propose_action`.
 
 **Example finding produced:**
 > **[high]** "WebSocket reconnection fix has been idle for nearly 10 days, critical for user experience stability"
@@ -139,7 +139,7 @@ graph TD
 
 **Test case:** `detect-missing-standups.test.ts` — "detects people with no standup in 48 hours" mocks empty standup result, verifies medium-severity finding.
 
-**Trace:** Same [proactive trace](https://smith.langchain.com/public/e09239db-e51d-4210-91eb-4975c67a3f90/r) — `detect_missing_standups` starts at 13:19:34.542, completes at 13:19:34.568 (26ms, no LLM needed).
+**Trace:** Same [proactive trace](https://smith.langchain.com/public/679b479b-e1f1-41f9-b0ad-e95899bbc5c8/r) — `detect_missing_standups` calls `GET /api/team/people` + `GET /api/standups` in parallel, completes in ~50ms, no LLM needed.
 
 **Example finding produced:**
 > **[medium]** "Alex Rivera has not posted a standup in the last 48 hours."
@@ -162,7 +162,7 @@ graph TD
 
 **Test case:** `detect-scope-creep.test.ts` — "detects issues added after plan submission" mocks plan timestamp and issues with later creation dates, verifies finding contains correct count.
 
-**Trace:** Same [proactive trace](https://smith.langchain.com/public/e09239db-e51d-4210-91eb-4975c67a3f90/r) — `detect_scope_creep` starts at 13:19:34.542, completes at 13:19:34.564 (22ms).
+**Trace:** Same [proactive trace](https://smith.langchain.com/public/679b479b-e1f1-41f9-b0ad-e95899bbc5c8/r) — `detect_scope_creep` calls `GET /api/workspaces/current` + `GET /api/weeks` + `GET /api/weeks/:id/issues` + `GET /api/weeks/:id/plan`, completes in ~60ms.
 
 **Example finding produced:**
 > **[medium]** "3 issue(s) added to 'Week 12 (Mar 16-22)' after plan was submitted."
@@ -185,7 +185,7 @@ graph TD
 
 **Test case:** `detect-missing-rituals.test.ts` — "detects past weeks without retros as high severity" mocks a past week with no ritual documents, verifies high-severity finding.
 
-**Trace:** Same [proactive trace](https://smith.langchain.com/public/e09239db-e51d-4210-91eb-4975c67a3f90/r) — `detect_missing_rituals` starts at 13:19:34.541, completes at 13:19:34.568 (27ms).
+**Trace:** Same [proactive trace](https://smith.langchain.com/public/679b479b-e1f1-41f9-b0ad-e95899bbc5c8/r) — `detect_missing_rituals` calls `GET /api/weeks` (returns `has_plan`/`has_retro` flags), completes in ~50ms.
 
 **Example finding produced:**
 > **[high]** "Week 'Week 11 (Mar 9-15)' (Sprint 11) was completed without a retro."
@@ -208,7 +208,7 @@ graph TD
 
 **Test case:** `merge-context.test.ts` — "combines all three context fields" verifies document context, workspace stats, and findings all appear in merged output.
 
-**Trace:** [On-demand trace](https://smith.langchain.com/public/f07511fa-48f1-4b71-a14b-84384836a2ec/r) — Three fetch nodes start within 1ms (13:23:06.621–622), merge at 13:23:06.705, then `ChatAnthropic` reasons for ~9s, producing the response.
+**Trace:** [On-demand trace](https://smith.langchain.com/public/90d169ae-46b4-4355-9c60-adaa361ce7fc/r) — Three fetch nodes start within 1ms using Ship REST API, merge at 40.952, then `ChatAnthropic` reasons for ~10s, producing the response.
 
 **Example interaction:**
 > **User:** "Give me a full project health assessment."
@@ -389,49 +389,48 @@ Three tables (migration 039):
 
 ## LangSmith Trace Links
 
-All traces from production (2026-03-22), running against real Ship data.
+All traces from production (2026-03-22), running against real Ship data via the Ship REST API.
 
 ### Trace 1 — Proactive Deep Scan (Path A: 4-way parallel detection)
 
-**Link:** https://smith.langchain.com/public/e09239db-e51d-4210-91eb-4975c67a3f90/r
+**Link:** https://smith.langchain.com/public/679b479b-e1f1-41f9-b0ad-e95899bbc5c8/r
 
 **What to look for:**
-1. `fetch_activity` (13:19:34.524–540) — checks activity hash, detects changes
-2. **Parallel fan-out** — all 4 detection nodes start within 1ms:
-   - `detect_missing_rituals` (34.541–34.568)
-   - `detect_missing_standups` (34.542–34.568)
-   - `detect_scope_creep` (34.542–34.564)
-   - `detect_stale_issues` (34.542–41.345) — takes longest due to LLM call
-3. `ChatAnthropic` (34.565–41.343) — Claude classifies stale issue severity
-4. **Fan-in** — `propose_action` (41.346–41.422) — persists merged findings from all 4 nodes
+1. **Parallel fan-out** — all 4 detection nodes start within 2ms (all using Ship REST API):
+   - `detect_missing_rituals` (57.219–57.268) — `GET /api/weeks`
+   - `detect_missing_standups` (57.220–57.271) — `GET /api/team/people` + `GET /api/standups`
+   - `detect_scope_creep` (57.220–57.283) — `GET /api/workspaces/current` + `GET /api/weeks`
+   - `detect_stale_issues` (57.221–03.935) — `GET /api/issues?state=in_progress` + LLM call
+2. `ChatAnthropic` (57.276–03.933) — Claude classifies stale issue severity
+3. **Fan-in** — `propose_action` (03.937–04.010) — persists merged findings from all 4 nodes
 
-**Total:** 6.9 seconds. 3 of 4 detections complete in <30ms (pure DB). Only stale issue detection uses the LLM.
+**Total:** 6.8 seconds. 3 of 4 detections complete in <70ms (pure REST API calls). Only stale issue detection uses the LLM.
 
 ### Trace 2 — On-Demand Query (Path B: 3-way parallel context fetch)
 
-**Link:** https://smith.langchain.com/public/f07511fa-48f1-4b71-a14b-84384836a2ec/r
+**Link:** https://smith.langchain.com/public/90d169ae-46b4-4355-9c60-adaa361ce7fc/r
 
 **What to look for:**
-1. **Parallel fan-out** — 3 fetch nodes start within 1ms:
-   - `fetch_document` (06.621–06.704) — loads issue + history via `Promise.all`
-   - `fetch_pending_findings` (06.622–06.701)
-   - `fetch_workspace_stats` (06.622–06.705)
-2. `merge_context` (06.705–06.707) — combines outputs
-3. `answer_query` → `ChatAnthropic` (06.709–16.041) — Claude reasons with full context
-4. `format_response` (16.043–16.044) — pass-through
+1. **Parallel fan-out** — 3 fetch nodes start within 1ms (using Ship REST API):
+   - `fetch_document` (40.642–40.948) — `GET /api/documents/:id` + `GET /api/issues/:id/history`
+   - `fetch_pending_findings` (40.642–40.650) — FleetGraph DB query
+   - `fetch_workspace_stats` (40.643–40.951) — `GET /api/issues` (3 parallel state-filtered calls)
+2. `merge_context` (40.952–40.954) — combines outputs
+3. `answer_query` → `ChatAnthropic` (40.956–50.534) — Claude reasons with full context
+4. `format_response` (50.536–50.538) — pass-through
 
-**Total:** 9.4 seconds. Context fetching completes in 83ms (parallel). LLM reasoning is the bottleneck.
+**Total:** 9.9 seconds. Context fetching completes in 312ms (parallel REST API). LLM reasoning is the bottleneck.
 
 ### Trace 3 — Clean Run (Path C: no changes, early exit)
 
-**Link:** https://smith.langchain.com/public/c9b10ff8-7b48-4e54-bd8a-3e76a67af893/r
+**Link:** https://smith.langchain.com/public/27b43c25-c5fa-4dc7-854a-22cbe482eb67/r
 
 **What to look for:**
-1. `fetch_activity` (48.223–48.240) — queries `document_history`, computes hash
+1. `fetch_activity` — fetches issues via `GET /api/issues`, computes hash of issue states
 2. Hash matches stored value → conditional edge returns `__end__`
 3. **No detection nodes execute. No LLM calls. No findings.**
 
-**Total:** 22ms. $0 LLM cost. This is what 95%+ of fast polls look like.
+**Total:** <100ms. $0 LLM cost. This is what 95%+ of fast polls look like.
 
 ### LangSmith Dashboard
 
