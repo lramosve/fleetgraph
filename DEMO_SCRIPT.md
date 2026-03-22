@@ -51,9 +51,9 @@
 
 **Action:** Point to propose_action at the end of the trace.
 
-> "Then comes the **fan-in**. propose_action waits for all four nodes to finish, collects their findings through a merge reducer, deduplicates them against what was already surfaced in the last 24 hours, checks for dismissed findings that are still suppressed, and saves everything new to the database as **pending** — waiting for a human."
+> "Then comes the **fan-in**. propose_action waits for all four nodes to finish, collects their findings through a merge reducer, deduplicates them against what was already surfaced in the last 24 hours, checks for dismissed findings that are still suppressed, and saves everything new to FleetGraph's findings table as **pending** — waiting for a human."
 >
-> "The whole run: 6.9 seconds. One LLM call. Four detection types. And if I switch to a clean run trace..."
+> "The whole run: under 7 seconds. One LLM call. Four detection types. All data fetched through Ship's REST API. And if I switch to a clean run trace..."
 
 **Action:** Briefly show the clean run trace: https://smith.langchain.com/public/27b43c25-c5fa-4dc7-854a-22cbe482eb67/r
 
@@ -65,7 +65,7 @@
 
 **Action:** Switch back to the app, Findings tab. Click **Approve** on the high-severity stale issue finding.
 
-> "Back in the app. I'm going to approve this finding. When I click Approve, FleetGraph executes the proposed action — in this case, it adds a comment to the WebSocket issue saying it's been flagged as stale and suggesting the team follow up."
+> "Back in the app. I'm going to approve this finding. When I click Approve, FleetGraph executes the proposed action — it calls Ship's comment API to add a comment to the WebSocket issue saying it's been flagged as stale and suggesting the team follow up."
 >
 > "The finding status changes to approved. The action is done. If I didn't agree, I could hit Dismiss instead, and FleetGraph would suppress that specific finding for 7 days — it won't bring it up again unless the condition gets significantly worse."
 
@@ -81,7 +81,7 @@
 
 **Action:** Switch to the Chat tab. Type: "What should I focus on today?" and send.
 
-> "FleetGraph also has an on-demand mode. I can ask it questions directly. It fetches workspace context in parallel — the current document, issue stats, and pending findings — merges them, and sends everything to Claude."
+> "FleetGraph also has an on-demand mode. I can ask it questions directly. It calls the Ship REST API in parallel — fetching the current document, issue stats, and pending findings — merges the results, and sends everything to Claude."
 
 **Action:** Wait for response, point to the answer.
 
@@ -93,7 +93,7 @@
 
 > "To recap: FleetGraph runs proactively every 3 minutes. When it detects changes, four detection nodes run in parallel — stale issues, missing standups, scope creep, and missing rituals. Findings are classified, deduplicated, and saved as proposals. Humans approve or dismiss. The agent never writes without permission."
 >
-> "Everything is traced in LangSmith, tested with 27 unit tests, and deployed on Railway running against real Ship data. Thanks."
+> "All Ship data is read through the REST API — no direct database access. Everything is traced in LangSmith, tested with 27 unit tests, and deployed on Railway running against real Ship data. Thanks."
 
 ---
 
