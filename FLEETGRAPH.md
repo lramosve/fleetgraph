@@ -94,10 +94,12 @@ graph TD
 
 ### UC1: Stale Issue Detection
 
-**What it detects:** In-progress issues with no `document_history` updates for 48+ hours.
+**What it detects:** In-progress issues with no updates for 48+ hours.
+
+**Data source:** `GET /api/issues?state=in_progress` (Ship REST API)
 
 **Decision logic:**
-1. Query all issues where `properties->>'state' = 'in_progress'` and `archived_at IS NULL`
+1. Fetch all in-progress issues via Ship REST API
 2. Pre-filter: compute `daysSinceUpdate = (now - updated_at) / 86400000`. Keep only `>= 2 days`
 3. If candidates exist, send issue list to Claude with severity classification prompt
 4. Claude returns JSON array: `[{ id, severity, summary, proposed_action }]`
@@ -124,14 +126,16 @@ graph TD
 
 **What it detects:** Team members who haven't posted a standup in the last 24–48 hours.
 
+**Data source:** `GET /api/team/people` + `GET /api/standups?date_from=...&date_to=...` (Ship REST API, parallel)
+
 **Decision logic:**
-1. Fetch all `person` documents and recent standups (last 48h) **in parallel** via `Promise.all`
+1. Fetch all people and recent standups (last 48h) **in parallel** via `Promise.all`
 2. Build a map: `person_id → last_standup_timestamp`
 3. For each person:
    - No standup in 48h → severity `medium`, "has not posted a standup in the last 48 hours"
    - Last standup 24–48h ago → severity `low`, includes hours since last standup
 
-**No LLM call** — pure database query + threshold logic.
+**No LLM call** — pure REST API query + threshold logic.
 
 **Test case:** `detect-missing-standups.test.ts` — "detects people with no standup in 48 hours" mocks empty standup result, verifies medium-severity finding.
 
@@ -145,14 +149,16 @@ graph TD
 
 **What it detects:** Issues added to the current week after the weekly plan was submitted.
 
+**Data source:** `GET /api/workspaces/current` + `GET /api/weeks` + `GET /api/weeks/:id/issues` + `GET /api/weeks/:id/plan` (Ship REST API, parallel where possible)
+
 **Decision logic:**
-1. Compute current sprint number from workspace `sprint_start_date`
-2. Find current week document (`document_type = 'sprint'`, matching sprint number)
+1. Fetch workspace and weeks list in parallel via Ship REST API
+2. Find current week from `currentSprintNumber`
 3. Fetch weekly plan and sprint issues **in parallel** via `Promise.all`
 4. Compare: `issue.created_at > plan.updated_at` → scope creep
 5. Severity: `>= 5 issues` → high | `>= 3` → medium | `< 3` → low
 
-**No LLM call** — pure database query + timestamp comparison.
+**No LLM call** — pure REST API query + timestamp comparison.
 
 **Test case:** `detect-scope-creep.test.ts` — "detects issues added after plan submission" mocks plan timestamp and issues with later creation dates, verifies finding contains correct count.
 
@@ -166,14 +172,16 @@ graph TD
 
 **What it detects:** Weeks without plans or retrospectives.
 
+**Data source:** `GET /api/weeks` (Ship REST API — returns `has_plan` and `has_retro` boolean flags per week)
+
 **Decision logic:**
-1. Compute current sprint number, check current + 2 previous weeks
-2. Fetch week documents and their child ritual documents (plans/retros) **in parallel** via `Promise.all`
-3. For each week, check if `weekly_plan` and `weekly_retro` children exist and have real content (`JSON.stringify(content).length > 100`)
+1. Fetch weeks list via Ship REST API (includes `has_plan`, `has_retro`, `startDate`, `endDate`)
+2. Filter to current + 2 previous weeks by `currentSprintNumber`
+3. For each week, check the `has_plan` and `has_retro` flags from the API response
 4. Missing plan on current/past week → medium (current) or high (past)
 5. Missing retro on past week → always high
 
-**No LLM call** — database query + content length check.
+**No LLM call** — single REST API call + boolean checks.
 
 **Test case:** `detect-missing-rituals.test.ts` — "detects past weeks without retros as high severity" mocks a past week with no ritual documents, verifies high-severity finding.
 
@@ -187,11 +195,13 @@ graph TD
 
 **What it does:** User asks a question in the chat panel. FleetGraph fetches workspace context in parallel and uses Claude to reason about project health.
 
+**Data source:** Ship REST API (`GET /api/documents/:id`, `GET /api/issues/:id/history`, `GET /api/issues`) + FleetGraph DB (`fleetgraph_findings`)
+
 **Decision logic:**
-1. Three context-fetch nodes run **concurrently**:
-   - `fetch_document` — current document + history (if `documentId` provided)
-   - `fetch_workspace_stats` — issue counts by state
-   - `fetch_pending_findings` — active FleetGraph findings
+1. Three context-fetch nodes run **concurrently** via Ship REST API:
+   - `fetch_document` — `GET /api/documents/:id` + `GET /api/issues/:id/history` (parallel)
+   - `fetch_workspace_stats` — `GET /api/issues` (3 parallel calls with state filters)
+   - `fetch_pending_findings` — FleetGraph's own `fleetgraph_findings` table
 2. `merge_context` combines non-empty outputs into a single context string
 3. `answer_query` passes context + user message to Claude with system prompt: "You are FleetGraph, a project intelligence assistant..."
 4. Claude reasons about the data and returns an actionable response
@@ -353,7 +363,7 @@ See [PRESEARCH.md](./PRESEARCH.md) for detailed rationale. Summary:
 | Framework | LangGraph JS (`@langchain/langgraph`) | TypeScript consistency with Ship, native LangSmith tracing, conditional edges + parallel fan-out |
 | Observability | LangSmith | Required from day one; automatic tracing via LangChain integration |
 | Trigger Model | Hybrid polling (3 min fast + 30 min slow) | Ship has no webhooks; hash-gated polling minimizes LLM cost |
-| Database | PostgreSQL (Ship's existing `pg` pool) | Direct DB access for agent queries, no ORM, shared connection pool |
+| Data Source | Ship REST API via `ship-client.ts` | Per PRD constraint: "The Ship REST API is your data source — no direct database access." FleetGraph's own tables (`fleetgraph_findings`, `fleetgraph_poll_state`) use direct DB since they are not Ship data. |
 | Human-in-the-Loop | Database state machine (pending → approved/dismissed) | Decouples detection from action execution; supports 7-day suppression |
 | Error Handling | Try-catch per node + LLM fallback | One failing detection node doesn't crash the graph; invalid LLM JSON falls back to rule-based classification |
 | Retry | `maxRetries: 3` on LLM, 30s graph timeout | Handles transient Claude API failures; prevents runaway executions |
@@ -497,7 +507,7 @@ Actual spend tracked via LangSmith from 2026-03-16 to 2026-03-22 (6 days of deve
 **URL:** https://fleetgraph-production-614c.up.railway.app/
 **Database:** Railway-managed PostgreSQL
 
-FleetGraph runs **inside the Ship API process** — not a separate service. `startFleetGraph()` hooks into the Express server boot and starts the polling scheduler. The proactive agent queries PostgreSQL directly via the shared connection pool (no HTTP API calls, no auth tokens needed).
+FleetGraph runs **inside the Ship API process** — not a separate service. `startFleetGraph()` hooks into the Express server boot and starts the polling scheduler. The proactive agent reads Ship data via the REST API (`ship-client.ts`) authenticated with a `FLEETGRAPH_API_TOKEN` (Bearer token). FleetGraph's own tables (`fleetgraph_findings`, `fleetgraph_poll_state`, `fleetgraph_chat_messages`) are accessed via direct DB since they are not Ship data.
 
 **Environment variables:**
 ```
@@ -508,4 +518,6 @@ LANGCHAIN_API_KEY=<key>
 LANGCHAIN_PROJECT=fleetgraph
 FLEETGRAPH_LLM_PROVIDER=anthropic  # optional, default
 FLEETGRAPH_LLM_MODEL=claude-sonnet-4-20250514  # optional, default
+FLEETGRAPH_API_TOKEN=ship_<token>              # API token for proactive mode REST API auth
+FLEETGRAPH_API_BASE_URL=http://localhost:80    # optional, defaults to localhost:PORT
 ```
