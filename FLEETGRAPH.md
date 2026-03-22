@@ -47,7 +47,7 @@ graph TD
     style detect_missing_rituals fill:#e1f5fe
 ```
 
-**Key decision point:** `fetch_activity` computes an MD5 hash of recent `document_history` IDs and compares it to the stored hash. If identical, the graph short-circuits to END (Path C). If different, the conditional edge returns an **array** of four node names, triggering LangGraph's parallel fan-out.
+**Key decision point:** `fetch_activity` fetches current issues via `GET /api/issues`, computes an MD5 hash of issue IDs + timestamps, and compares it to the stored hash. If identical, the graph short-circuits to END (Path C). If different, the conditional edge returns an **array** of four node names, triggering LangGraph's parallel fan-out.
 
 **Merge mechanism:** The `findings` state field uses a merge reducer `(a, b) => [...a, ...b]` so all four detection nodes can write findings concurrently without clobbering each other. `propose_action` waits for all four to complete (fan-in barrier), then persists all merged findings.
 
@@ -282,7 +282,7 @@ graph TD
 | Slow poll | 30 min | ~$0.016/scan | Absence-based: missing standups, rituals |
 | On-demand | User-initiated | ~$0.026/query | Whatever the user asks about |
 
-**Why polling:** Ship has no pub/sub or outbound events. The 3-min fast poll with activity-hash gating achieves <5 min detection latency. The hash comparison is a single DB query returning in <10ms — if nothing changed, no LLM call is made.
+**Why polling:** Ship has no pub/sub or outbound events. The 3-min fast poll with activity-hash gating achieves <5 min detection latency. The hash comparison uses a single REST API call (`GET /api/issues`) returning in <100ms — if nothing changed, no LLM call is made.
 
 **Clean run trace:** [Path C — no changes](https://smith.langchain.com/public/c9b10ff8-7b48-4e54-bd8a-3e76a67af893/r) — `fetch_activity` runs (13:22:48.223–240), hash matches, conditional edge returns `__end__`. Total: 22ms, zero LLM calls, zero cost.
 
@@ -323,7 +323,7 @@ Run: `cd api && npx vitest run --config vitest.config.fleetgraph.ts`
 | Person with no standup in 48h | Person exists, no standup rows | Medium severity finding |
 | Person with standup 30h ago | Standup timestamp 30h back | Low severity finding |
 | Person with recent standup | Standup 2h ago | No findings |
-| Queries run in parallel | Both queries fire | `pool.query` called exactly 2 times |
+| API calls run in parallel | Both endpoints called | `getPeople` and `getStandups` both invoked |
 
 **UC3 — Scope Creep:**
 | Test | Input | Expected |
@@ -341,7 +341,7 @@ Run: `cd api && npx vitest run --config vitest.config.fleetgraph.ts`
 | No weeks | No sprint documents | No findings |
 | Past week without retro | Week 10 ended, no retro | High severity finding |
 | Week with real content | Plan and retro with >100 chars | No findings |
-| Parallel query execution | Both queries fire | `pool.query` called exactly 3 times |
+| API called | Weeks endpoint called | `getWeeks` invoked once |
 
 **UC6/UC7 — Propose Action (HITL gate):**
 | Test | Input | Expected |
@@ -474,7 +474,7 @@ Actual spend tracked via LangSmith from 2026-03-16 to 2026-03-22 (6 days of deve
 |---|---|---|
 | Proactive runs per project per day | 48 slow polls + ~96 fast-triggered deep scans = **144 LLM invocations** | Slow poll every 30 min = 48/day. Fast poll triggers deep scan ~20% of cycles (480 × 0.2 = 96). |
 | On-demand invocations per user per day | **2** | Conservative estimate: 1 health check + 1 ad-hoc question per user per day. |
-| Average tokens per proactive invocation | **743** (391 input + 352 output) | Measured from production traces. Only `detect_stale_issues` calls the LLM; other 3 detections are pure DB queries. |
+| Average tokens per proactive invocation | **743** (391 input + 352 output) | Measured from production traces. Only `detect_stale_issues` calls the LLM; other 3 detections are pure REST API calls. |
 | Average tokens per on-demand invocation | **874** (507 input + 367 output) | Measured from production traces. Context includes document, workspace stats, and pending findings. |
 | Cost per proactive run | **$0.0065** | From LangSmith: $0.006453 per proactive deep scan. |
 | Cost per on-demand run | **$0.0070** | From LangSmith: $0.007026 per on-demand query. |
@@ -493,7 +493,7 @@ Actual spend tracked via LangSmith from 2026-03-16 to 2026-03-22 (6 days of deve
 
 **Cost optimization strategies:**
 - Activity-hash gating: 95%+ of fast polls cost $0 (no LLM call when nothing changed)
-- 3 of 4 detection nodes are pure DB queries (no LLM cost for standups, scope creep, rituals)
+- 3 of 4 detection nodes are pure REST API calls (no LLM cost for standups, scope creep, rituals)
 - Only `detect_stale_issues` invokes Claude (for nuanced severity classification with fallback)
 - Finding deduplication prevents re-surfacing the same condition within 24 hours
 - Dismissal suppression prevents re-checking dismissed conditions for 7 days
