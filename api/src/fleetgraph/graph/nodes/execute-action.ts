@@ -1,10 +1,13 @@
 import { pool } from '../../../db/client.js';
+import { addComment } from '../../ship-client.js';
 
 /**
- * Execute an approved finding's action (e.g., add a comment to the issue).
- * Called when a user approves a finding via the REST API.
+ * Execute an approved finding's action.
+ * Uses Ship REST API for write operations (POST /api/documents/:id/comments).
+ * Uses direct DB for FleetGraph's own tables (fleetgraph_findings status update).
  */
 export async function executeAction(findingId: string, workspaceId: string): Promise<void> {
+  // Read from FleetGraph's own table (direct DB is OK for FleetGraph tables)
   const result = await pool.query(
     'SELECT * FROM fleetgraph_findings WHERE id = $1 AND workspace_id = $2',
     [findingId, workspaceId]
@@ -14,19 +17,12 @@ export async function executeAction(findingId: string, workspaceId: string): Pro
   if (!finding) throw new Error('Finding not found');
 
   if (finding.finding_type === 'stale_issue' && finding.document_id) {
-    // Add a comment to the stale issue
+    // Write via Ship REST API
     const commentContent = `**FleetGraph Alert:** ${finding.summary}\n\n*Suggested action:* ${finding.proposed_action}`;
-
-    await pool.query(
-      `INSERT INTO comments (id, workspace_id, document_id, comment_id, author_id, content)
-       VALUES (gen_random_uuid(), $1, $2, gen_random_uuid(),
-         (SELECT id FROM users WHERE email = 'fleetgraph@system' LIMIT 1),
-         $3)`,
-      [workspaceId, finding.document_id, commentContent]
-    );
+    await addComment(finding.document_id, commentContent);
   }
 
-  // Mark finding as executed
+  // Update FleetGraph's own table
   await pool.query(
     "UPDATE fleetgraph_findings SET status = 'executed', updated_at = NOW() WHERE id = $1",
     [findingId]

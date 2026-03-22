@@ -1,12 +1,12 @@
-import { pool } from '../../../db/client.js';
 import { getLLM } from '../../llm/client.js';
+import { getIssues } from '../../ship-client.js';
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import type { FleetGraphStateType } from '../state.js';
 import type { Finding } from '../state.js';
 
 /**
- * Combined node: fetches in-progress issues and detects stale ones via LLM.
- * Runs in parallel with detect-missing-standups in the proactive graph.
+ * Combined node: fetches in-progress issues via Ship REST API and detects stale ones via LLM.
+ * Runs in parallel with other detection nodes in the proactive graph.
  */
 export async function detectStaleIssues(state: FleetGraphStateType): Promise<Partial<FleetGraphStateType>> {
   try {
@@ -18,26 +18,16 @@ export async function detectStaleIssues(state: FleetGraphStateType): Promise<Par
 }
 
 async function _detectStaleIssues(state: FleetGraphStateType): Promise<Partial<FleetGraphStateType>> {
-  const { workspaceId } = state;
   const now = Date.now();
 
-  // Fetch all in-progress issues
-  const result = await pool.query(
-    `SELECT d.id, d.title, d.updated_at, d.properties
-     FROM documents d
-     WHERE d.workspace_id = $1
-       AND d.document_type = 'issue'
-       AND d.properties->>'state' = 'in_progress'
-       AND d.archived_at IS NULL
-     ORDER BY d.updated_at ASC`,
-    [workspaceId]
-  );
+  // Fetch all in-progress issues via Ship REST API
+  const apiIssues = await getIssues({ state: 'in_progress' });
 
-  const issues = result.rows.map((row: { id: string; title: string; updated_at: string; properties: Record<string, unknown> }) => ({
+  const issues = apiIssues.map(row => ({
     id: row.id,
     title: row.title,
-    state: (row.properties?.state as string) || 'in_progress',
-    assignee_id: (row.properties?.assignee_id as string) || null,
+    state: row.state || 'in_progress',
+    assignee_id: (row.assignee_id || row.properties?.assignee_id as string) || null,
     updated_at: row.updated_at,
     properties: row.properties || {},
   }));

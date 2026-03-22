@@ -1,36 +1,32 @@
 import { pool } from '../../../db/client.js';
+import { getIssues } from '../../ship-client.js';
 import { createHash } from 'crypto';
 import type { FleetGraphStateType } from '../state.js';
 
+/**
+ * Detects workspace activity changes by hashing current issue states.
+ *
+ * Uses Ship REST API (GET /api/issues) to fetch current issue state,
+ * then compares a hash against the stored hash in FleetGraph's own poll_state table.
+ * FleetGraph's own tables (fleetgraph_poll_state) are accessed via direct DB.
+ */
 export async function fetchActivity(state: FleetGraphStateType): Promise<Partial<FleetGraphStateType>> {
   const { workspaceId } = state;
 
-  // Get recent activity (last 5 minutes for fast poll)
-  // document_history doesn't have workspace_id, so join through documents
-  const result = await pool.query(
-    `SELECT dh.id, dh.document_id, dh.field, dh.created_at
-     FROM document_history dh
-     JOIN documents d ON d.id = dh.document_id
-     WHERE d.workspace_id = $1
-       AND dh.created_at > NOW() - INTERVAL '5 minutes'
-     ORDER BY dh.created_at DESC
-     LIMIT 100`,
-    [workspaceId]
-  );
+  // Fetch current issues via Ship REST API
+  const issues = await getIssues();
 
-  const activityFeed = result.rows.map(r => ({
-    id: r.id,
-    document_id: r.document_id,
-    action: r.field,
-    changed_at: r.created_at,
-  }));
+  // Build activity snapshot: hash of issue IDs + updated_at timestamps
+  const snapshot = issues
+    .map(i => `${i.id}:${i.updated_at}`)
+    .sort()
+    .join(',');
 
-  // Check if anything changed since last poll
   const currentHash = createHash('md5')
-    .update(JSON.stringify(activityFeed.map(a => a.id)))
+    .update(snapshot)
     .digest('hex');
 
-  // Check stored hash
+  // Check stored hash (FleetGraph's own table — direct DB OK)
   const pollState = await pool.query(
     'SELECT activity_hash FROM fleetgraph_poll_state WHERE workspace_id = $1',
     [workspaceId]
@@ -38,9 +34,9 @@ export async function fetchActivity(state: FleetGraphStateType): Promise<Partial
 
   const previousHash = pollState.rows[0]?.activity_hash;
   // Preserve hasChanges if already set (e.g., slow poll forces it true)
-  const hasChanges = state.hasChanges || (activityFeed.length > 0 && currentHash !== previousHash);
+  const hasChanges = state.hasChanges || (issues.length > 0 && currentHash !== previousHash);
 
-  // Update poll state
+  // Update poll state (FleetGraph's own table)
   await pool.query(
     `INSERT INTO fleetgraph_poll_state (workspace_id, last_fast_poll, activity_hash, updated_at)
      VALUES ($1, NOW(), $2, NOW())
@@ -50,6 +46,13 @@ export async function fetchActivity(state: FleetGraphStateType): Promise<Partial
        updated_at = NOW()`,
     [workspaceId, currentHash]
   );
+
+  const activityFeed = issues.slice(0, 100).map(i => ({
+    id: i.id,
+    document_id: i.id,
+    action: i.state,
+    changed_at: i.updated_at,
+  }));
 
   return { activityFeed, hasChanges };
 }

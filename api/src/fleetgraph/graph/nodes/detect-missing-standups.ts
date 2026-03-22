@@ -1,10 +1,11 @@
-import { pool } from '../../../db/client.js';
+import { getPeople, getStandups } from '../../ship-client.js';
 import type { FleetGraphStateType } from '../state.js';
 import type { Finding } from '../state.js';
 
 /**
  * Detects team members who have not posted a standup in the last 24 hours.
- * Runs in parallel with detect-stale-issues in the proactive graph.
+ * Uses Ship REST API: GET /api/team/people + GET /api/standups.
+ * Runs in parallel with other detection nodes in the proactive graph.
  */
 export async function detectMissingStandups(state: FleetGraphStateType): Promise<Partial<FleetGraphStateType>> {
   try {
@@ -15,40 +16,33 @@ export async function detectMissingStandups(state: FleetGraphStateType): Promise
   }
 }
 
-async function _detectMissingStandups(state: FleetGraphStateType): Promise<Partial<FleetGraphStateType>> {
-  const { workspaceId } = state;
+async function _detectMissingStandups(_state: FleetGraphStateType): Promise<Partial<FleetGraphStateType>> {
+  const now = new Date();
+  const twoDaysAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+  const dateFrom = twoDaysAgo.toISOString().substring(0, 10);
+  const dateTo = now.toISOString().substring(0, 10);
 
-  // Fetch people and their recent standups in parallel
-  const [peopleResult, standupsResult] = await Promise.all([
-    pool.query(
-      `SELECT d.id, d.title, d.properties
-       FROM documents d
-       WHERE d.workspace_id = $1
-         AND d.document_type = 'person'
-         AND d.archived_at IS NULL`,
-      [workspaceId]
-    ),
-    pool.query(
-      `SELECT d.properties->>'author_id' as author_id, MAX(d.created_at) as last_standup
-       FROM documents d
-       WHERE d.workspace_id = $1
-         AND d.document_type = 'standup'
-         AND d.created_at > NOW() - INTERVAL '48 hours'
-       GROUP BY d.properties->>'author_id'`,
-      [workspaceId]
-    ),
+  // Fetch people and recent standups in parallel via Ship REST API
+  const [people, standups] = await Promise.all([
+    getPeople(),
+    getStandups(dateFrom, dateTo),
   ]);
 
-  const people = peopleResult.rows;
-  const recentStandups = new Map(
-    standupsResult.rows.map((r: { author_id: string; last_standup: string }) => [r.author_id, r.last_standup])
-  );
+  // Build map: person_id → last standup timestamp
+  const recentStandups = new Map<string, string>();
+  for (const s of standups) {
+    const authorId = s.properties?.author_id as string;
+    if (!authorId) continue;
+    const existing = recentStandups.get(authorId);
+    if (!existing || s.created_at > existing) {
+      recentStandups.set(authorId, s.created_at);
+    }
+  }
 
   const findings: Finding[] = [];
-  const now = Date.now();
 
   for (const person of people) {
-    const lastStandup = recentStandups.get(person.id);
+    const lastStandup = recentStandups.get(person.id) || recentStandups.get(person.user_id || '');
     if (!lastStandup) {
       // No standup in the last 48 hours
       findings.push({
@@ -56,20 +50,20 @@ async function _detectMissingStandups(state: FleetGraphStateType): Promise<Parti
         severity: 'medium',
         document_id: person.id,
         document_type: 'person',
-        summary: `${person.title} has not posted a standup in the last 48 hours.`,
-        details: { person_name: person.title },
+        summary: `${person.name} has not posted a standup in the last 48 hours.`,
+        details: { person_name: person.name },
         proposed_action: 'Send a reminder to post a standup update.',
       });
     } else {
-      const hoursSince = (now - new Date(lastStandup).getTime()) / (1000 * 60 * 60);
+      const hoursSince = (now.getTime() - new Date(lastStandup).getTime()) / (1000 * 60 * 60);
       if (hoursSince > 24) {
         findings.push({
           finding_type: 'missing_standup',
           severity: 'low',
           document_id: person.id,
           document_type: 'person',
-          summary: `${person.title} last posted a standup ${hoursSince.toFixed(0)} hours ago.`,
-          details: { person_name: person.title, hours_since: hoursSince },
+          summary: `${person.name} last posted a standup ${hoursSince.toFixed(0)} hours ago.`,
+          details: { person_name: person.name, hours_since: hoursSince },
           proposed_action: 'Send a reminder to post a standup update.',
         });
       }
